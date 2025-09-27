@@ -32,14 +32,35 @@ interface ReactorData {
   fusionFee: bigint
 }
 
-export default function InteractionClient() {
+export default function InteractionClient({ 
+  params, 
+  searchParams 
+}: { 
+  params: { coinId: string }
+  searchParams: { coin?: string }
+}) {
   const { address, isConnected } = useAccount()
-  const params = useParams()
-  const reactorAddress = params.coinId as string
+  
+  // Handle both path parameter and query parameter approaches
+  // If coinId is 'c', use the 'coin' query parameter, otherwise use coinId as the address
+  const reactorAddress = params.coinId === 'c' ? searchParams.coin : params.coinId
   
   const [activeTab, setActiveTab] = useState("fission")
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
+
+  // If no reactor address is provided, show error
+  if (!reactorAddress) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">No Reactor Address</h2>
+          <p className="text-muted-foreground">Please provide a valid reactor address.</p>
+        </div>
+      </div>
+    )
+  }
 
   // Contract reads for reactor data
   const { data: systemHealth, isLoading: isLoadingHealth, refetch: refetchHealth } = useReadContract({
@@ -243,7 +264,7 @@ export default function InteractionClient() {
     }
   }
 
-  const needsApproval = activeTab === "fission" && baseAllowance !== undefined && parseEther(amount || "0") > (baseAllowance || 0n)
+  const needsApproval = activeTab === "fission" && baseAllowance !== undefined && parseEther(amount || "0") > (baseAllowance || BigInt(0))
 
   const formatBalance = (balance: bigint | undefined) => {
     if (!balance) return "0"

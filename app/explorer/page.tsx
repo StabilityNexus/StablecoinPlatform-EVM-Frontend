@@ -129,7 +129,7 @@ function SimpleReactorCard({ address }: { address: string }) {
           </div>
         </div>
         
-        <Link href={`/${address}`}>
+        <Link href={`/c?coin=${address}`}>
           <Button className="w-full" size="sm">
             <ExternalLink className="h-4 w-4 mr-2" />
             Interact
@@ -271,7 +271,7 @@ export default function ExplorerPage() {
             ) : (
               <div className="max-w-4xl mx-auto space-y-2">
                 {filteredReactorAddresses.map((address) => (
-                  <Link key={address} href={`/${address}`}>
+                  <Link key={address} href={`/c?coin=${address}`}>
                     <div className="bg-card/50 border-2 border-white/10 rounded-lg p-4 hover:border-white/20 transition-all duration-300 group cursor-target">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
