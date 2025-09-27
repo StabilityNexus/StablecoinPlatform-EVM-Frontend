@@ -7,7 +7,11 @@ export const StableCoinFactories = {
 }
 
 export const PythOracles = {
-  534351: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729'
+  534351: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729',
+  // Note: Pyth Oracle addresses for other chains need to be added
+  // when they become available. Currently only Scroll Sepolia is supported.
+  // 5115: 'TBD - Citrea Testnet Pyth Oracle address',
+  // 31: 'TBD - Rootstock Testnet Pyth Oracle address'
 } as {
   [key: number]: `0x${string}`
 }

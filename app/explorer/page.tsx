@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useReadContract } from "wagmi"
+import { useReadContract, useChainId } from "wagmi"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -143,17 +143,21 @@ function SimpleReactorCard({ address }: { address: string }) {
 export default function ExplorerPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const chainId = useChainId()
+
+  // Get current chain's factory address
+  const factoryAddress = StableCoinFactories[chainId as keyof typeof StableCoinFactories]
 
   // Get all deployed reactors
   const { data: deployedReactors, isLoading: isLoadingReactors, error: reactorsError } = useReadContract({
-    address: StableCoinFactories[534351],
+    address: factoryAddress,
     abi: StableCoinFactoryABI,
     functionName: 'getAllDeployedReactors',
   })
 
   // Get reactor count for UI
   const { data: reactorCount, error: countError } = useReadContract({
-    address: StableCoinFactories[534351],
+    address: factoryAddress,
     abi: StableCoinFactoryABI,
     functionName: 'getDeployedReactorsCount',
   })
@@ -161,19 +165,40 @@ export default function ExplorerPage() {
   // Debug logging
   useEffect(() => {
     console.log('Explorer Debug:', {
-      factoryAddress: StableCoinFactories[534351],
+      chainId,
+      factoryAddress,
       deployedReactors,
       reactorCount: reactorCount?.toString(),
       isLoadingReactors,
       reactorsError: reactorsError?.message,
       countError: countError?.message
     })
-  }, [deployedReactors, reactorCount, isLoadingReactors, reactorsError, countError])
+  }, [chainId, factoryAddress, deployedReactors, reactorCount, isLoadingReactors, reactorsError, countError])
 
   // Filter reactors by search term (basic filtering for addresses)
   const filteredReactorAddresses = deployedReactors?.filter((address: string) => 
     address.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
+
+  // Check if current chain is supported
+  if (!factoryAddress) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto" />
+          <h2 className="text-2xl font-bold">Unsupported Chain</h2>
+          <p className="text-muted-foreground max-w-md">
+            Chain ID {chainId} is not supported. Please switch to one of the supported networks:
+          </p>
+          <div className="space-y-2 text-sm">
+            <div>• Citrea Testnet (Chain ID: 5115)</div>
+            <div>• Rootstock Testnet (Chain ID: 31)</div>
+            <div>• Scroll Sepolia (Chain ID: 534351)</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Orbitron', 'Space Mono', 'Courier New', monospace", fontWeight: "500" }}>

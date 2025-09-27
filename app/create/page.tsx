@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,6 +35,7 @@ const RISK_LEVELS = [
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
   const [config, setConfig] = useState<ReactorConfig>({
     vaultName: "",
     neutronName: "",
@@ -90,15 +91,28 @@ export default function CreatePage() {
       return
     }
 
+    const factoryAddress = StableCoinFactories[chainId as keyof typeof StableCoinFactories]
+    const pythOracleAddress = PythOracles[chainId as keyof typeof PythOracles]
+
+    if (!factoryAddress) {
+      toast.error(`Chain ID ${chainId} is not supported. Please switch to Citrea Testnet, Rootstock Testnet, or Scroll Sepolia.`)
+      return
+    }
+
+    if (!pythOracleAddress) {
+      toast.error(`Pyth Oracle not available for Chain ID ${chainId}. Currently only available on Scroll Sepolia.`)
+      return
+    }
+
     try {
       writeContract({
-        address: StableCoinFactories[534351],
+        address: factoryAddress,
         abi: StableCoinFactoryABI,
         functionName: 'deployReactor',
         args: [
           config.vaultName,
           config.baseToken as `0x${string}`,
-          PythOracles[534351],
+          pythOracleAddress,
           config.priceId as `0x${string}`,
           BigInt(3600), // 1 hour max price age
           config.neutronName,
