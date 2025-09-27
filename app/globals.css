@@ -137,3 +137,13 @@
   background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
 }
+
+/* Custom dashed borders with bigger dashes and proper spacing */
+.border-big-dashed {
+  border: 3px dashed rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.border-big-dashed:hover {
+  border-color: rgba(255, 255, 255, 0.8);
+}

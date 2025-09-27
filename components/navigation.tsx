@@ -36,7 +36,7 @@ export default function Navigation() {
       <div className="absolute top-[1em] left-4 z-[1002]">
         <Link href="/" className="flex items-center space-x-2 group">
           <span className="font-bold text-xl text-foreground group-hover:text-primary transition-colors">
-            StableCoin
+            NUCLOIN
           </span>
         </Link>
       </div>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Wallet, Rocket, CheckCircle, Zap } from "lucide-react"
 import { StableCoinFactoryABI } from "@/utils/abi/StableCoinFactory"
-import { StableCoinFactories, PythOracles, PriceFeedCategories } from "@/utils/addresses"
+import { StableCoinFactories, Oracles, PriceFeedCategories } from "@/utils/addresses"
 import { toast } from "sonner"
 import Shuffle from "@/components/Shuffle"
 import TargetCursor from "@/components/TargetCursor"
@@ -92,7 +92,7 @@ export default function CreatePage() {
     }
 
     const factoryAddress = StableCoinFactories[chainId as keyof typeof StableCoinFactories]
-    const pythOracleAddress = PythOracles[chainId as keyof typeof PythOracles]
+    const pythOracleAddress = Oracles[chainId as keyof typeof Oracles]
 
     if (!factoryAddress) {
       toast.error(`Chain ID ${chainId} is not supported. Please switch to Citrea Testnet, Rootstock Testnet, or Scroll Sepolia.`)
@@ -100,7 +100,7 @@ export default function CreatePage() {
     }
 
     if (!pythOracleAddress) {
-      toast.error(`Pyth Oracle not available for Chain ID ${chainId}. Currently only available on Scroll Sepolia.`)
+      toast.error(`Pyth Oracle not configured for Chain ID ${chainId}. Please contact support.`)
       return
     }
 
@@ -328,23 +328,6 @@ export default function CreatePage() {
             {/* Deploy Section */}
             <div className="border-t border-white/10 p-8">
               <div className="space-y-4">
-                {/* Info Panel */}
-                <div className="bg-muted/20 rounded-lg p-4 border border-white/10">
-                  <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                    <div>
-                      <div className="font-semibold">Critical Ratio</div>
-                      <div className="text-muted-foreground">80%</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold">Fees</div>
-                      <div className="text-muted-foreground">0.5%</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold">Peg Target</div>
-                      <div className="text-muted-foreground">{config.pegAsset}</div>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Deploy Button */}
                 <Button 

@@ -7,6 +7,7 @@ import LightRays from "@/components/LightRays"
 import Shuffle from "@/components/Shuffle"
 import TargetCursor from "@/components/TargetCursor"
 import TokenFlow from "@/components/TokenFlow"
+import { HeroText } from "@/components/HeroText"
 import { motion } from "framer-motion"
 
 export default function HomePage() {
@@ -36,26 +37,7 @@ export default function HomePage() {
       <section className="relative min-h-screen flex items-center z-[5]">
         <div className="container mx-auto px-4 mb-24 relative z-10">
           <div className="text-center">
-            <h1 className="text-5xl lg:text-7xl font-bold mb-6">
-              Create Stable Assets
-              <div>
-                <Shuffle
-                  text="On Bitcoin"
-                  tag="span"
-                  className="block text-muted-foreground"
-                  shuffleDirection="right"
-                  duration={0.35}
-                  animationMode="evenodd"
-                  shuffleTimes={1}
-                  ease="power3.out"
-                  stagger={0.03}
-                  threshold={0.1}
-                  triggerOnce={true}
-                  triggerOnHover={true}
-                  respectReducedMotion={true}
-                />
-              </div>
-            </h1>
+            <HeroText />
             <p className="text-xl text-muted-foreground mb-8 text-pretty max-w-2xl mx-auto">
               Launch your own stablecoin with our intuitive platform. Maintain price stability, ensure transparency, and
               build trust in the decentralized economy.
@@ -110,22 +92,22 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5, duration: 0.5 }}
                     >
-                      Get exposure to stability with StableCoin.
+                      Get exposure to stability with Neutron.
                       <br />
-                      StableCoin is the stablecoin pegged to price of 1 backed token.
+                      Neutron is the stablecoin pegged to price of 1 backed token.
                       <br /><br />
-                      Get leveraged volatility and yield with ReserveCoin.
+                      Get leveraged volatility and yield with Proton.
                       <br />
-                      ReserveCoin tokenizes the reserve surplus.
+                      Proton tokenizes the reserve surplus.
                       <br /><br />
-                      Both StableCoin and ReserveCoin are fully backed by ERC-20 tokens.
+                      Both Neutron and Proton are fully backed by ERC-20 tokens.
                     </motion.p>
                   </div>
                 </div>
                 <div className="grid lg:pl-6 grid-cols-1 items-start gap-6">
                   {[
-                    { icon: "⚡", title: "Fission", description: "Splits ERC-20 tokens into StableCoin stable tokens and ReserveCoin volatile tokens" },
-                    { icon: "✨", title: "Fusion", description: "Merges StableCoin stable tokens and ReserveCoin volatile tokens into ERC-20 tokens" }
+                    { icon: "⚡", title: "Fission", description: "Splits ERC-20 tokens into Neutron stable tokens and Proton volatile tokens" },
+                    { icon: "✨", title: "Fusion", description: "Merges Neutron stable tokens and Proton volatile tokens into ERC-20 tokens" }
                   ].map((item, index) => (
                     <motion.div
                       key={item.title}
@@ -152,17 +134,17 @@ export default function HomePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                {/* Fission: ERC-20 -> StableCoin + ReserveCoin */}
+                {/* Fission: ERC-20 -> Neutron + Proton */}
                 <TokenFlow
                   title="Fission"
                   fromTokens={['ERC-20']}
-                  toTokens={['StableCoin', 'ReserveCoin']}
+                  toTokens={['Neutron', 'Proton']}
                 />
 
-                {/* Fusion: StableCoin + ReserveCoin -> ERC-20 */}
+                {/* Fusion: Neutron + Proton -> ERC-20 */}
                 <TokenFlow
                   title="Fusion"
-                  fromTokens={['StableCoin', 'ReserveCoin']}
+                  fromTokens={['Neutron', 'Proton']}
                   toTokens={['ERC-20']}
                   reverse={false}
                 />
@@ -178,7 +160,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold mb-6 text-balance">Why Choose Our Platform</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty">
-              Built for developers, designed for everyone. Create stable digital assets with confidence.
+              Revolutionary dual-token mechanics on Bitcoin infrastructure. Build the future of stable assets with cutting-edge technology.
             </p>
           </div>
 
@@ -188,20 +170,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Price Stability
+                    Dual Token Innovation
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.1
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Advanced algorithms ensure your stablecoin maintains its peg to the target asset. Our robust mechanisms provide consistent value preservation across market conditions.
+                  Revolutionary fission/fusion mechanics split assets into Neutron (stable) and Proton (volatile) tokens. Get exposure to both stability and leveraged volatility from a single underlying asset.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">AUTOMATED</div>
-                  <div className="text-white font-semibold text-sm">RELIABLE</div>
-                  <div className="text-white font-semibold text-sm">SECURE</div>
-                </div>
               </CardContent>
             </Card>
 
@@ -210,20 +187,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Full Transparency
+                    Bitcoin Infrastructure
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.2
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  All transactions and reserves are publicly auditable on the blockchain. Complete transparency builds trust and ensures accountability in every operation.
+                  Built on Bitcoin-compatible networks like Citrea and Rootstock. Leverage Bitcoin's security and stability while accessing modern DeFi capabilities and smart contract functionality.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">AUDITABLE</div>
-                  <div className="text-white font-semibold text-sm">OPEN SOURCE</div>
-                  <div className="text-white font-semibold text-sm">VERIFIABLE</div>
-                </div>
               </CardContent>
             </Card>
 
@@ -232,20 +204,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Easy Integration
+                    Real-Time Oracle Data
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.3
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Simple APIs and SDKs make it easy to integrate with your existing systems. Comprehensive documentation and developer tools streamline implementation.
+                  Powered by Pyth Network's real-time price feeds for accurate and reliable asset pricing. Get sub-second price updates across multiple asset classes including fiat, crypto, and commodities.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">REST API</div>
-                  <div className="text-white font-semibold text-sm">SDK</div>
-                  <div className="text-white font-semibold text-sm">WEBHOOKS</div>
-                </div>
               </CardContent>
             </Card>
 
@@ -254,20 +221,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Regulatory Compliant
+                    Full Transparency
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.4
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Built with compliance in mind to meet regulatory requirements worldwide. Our framework adapts to evolving regulations across different jurisdictions.
+                  All transactions, reserves, and system health metrics are publicly auditable on the blockchain. Complete transparency builds trust and ensures accountability in every operation.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">KYC</div>
-                  <div className="text-white font-semibold text-sm">AML</div>
-                  <div className="text-white font-semibold text-sm">GDPR</div>
-                </div>
               </CardContent>
             </Card>
 
@@ -276,20 +238,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    24/7 Monitoring
+                    Dynamic Risk Management
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.5
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Continuous monitoring ensures your stablecoin operates smoothly around the clock. Real-time alerts and automated responses maintain system integrity.
+                  Advanced system health monitoring and automated risk management protocols. Choose from conservative, moderate, or aggressive risk profiles to match your investment strategy.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">UPTIME</div>
-                  <div className="text-white font-semibold text-sm">ALERTS</div>
-                  <div className="text-white font-semibold text-sm">SUPPORT</div>
-                </div>
               </CardContent>
             </Card>
 
@@ -298,20 +255,15 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Global Access
+                    Multi-Chain Support
                   </div>
                   <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
                     1.6
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Deploy on multiple blockchains and reach users worldwide with cross-chain support. Seamless interoperability across different network ecosystems.
+                  Deploy across Citrea Testnet, Rootstock Testnet, and Scroll Sepolia networks. Seamless cross-chain functionality with unified user experience across Bitcoin-compatible ecosystems.
                 </p>
-                <div className="flex items-center gap-4">
-                  <div className="text-white font-semibold text-sm">MULTI-CHAIN</div>
-                  <div className="text-white font-semibold text-sm">BRIDGE</div>
-                  <div className="text-white font-semibold text-sm">SCALING</div>
-                </div>
               </CardContent>
             </Card>
           </div>

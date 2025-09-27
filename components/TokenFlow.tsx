@@ -35,8 +35,8 @@ const TokenFlow = ({
   className = ""
 }: {
   title: string;
-  fromTokens: Array<'ERC-20' | 'StableCoin' | 'ReserveCoin'>;
-  toTokens: Array<'ERC-20' | 'StableCoin' | 'ReserveCoin'>;
+  fromTokens: Array<'ERC-20' | 'Neutron' | 'Proton'>;
+  toTokens: Array<'ERC-20' | 'Neutron' | 'Proton'>;
   reverse?: boolean;
   className?: string;
 }) => {
@@ -63,14 +63,14 @@ const TokenFlow = ({
     return () => clearTimeout(timer);
   }, [fromTokens.length, toTokens.length]);
 
-  const getTokenIcon = (token: 'ERC-20' | 'StableCoin' | 'ReserveCoin') => {
+  const getTokenIcon = (token: 'ERC-20' | 'Neutron' | 'Proton') => {
     const iconProps = { className: "w-full h-full" };
     switch (token) {
       case 'ERC-20':
         return <ErcIcon {...iconProps} />;
-      case 'StableCoin':
+      case 'Neutron':
         return <StableCoinIcon {...iconProps} />;
-      case 'ReserveCoin':
+      case 'Proton':
         return <ReserveCoinIcon {...iconProps} />;
     }
   };

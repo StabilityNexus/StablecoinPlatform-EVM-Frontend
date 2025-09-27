@@ -77,12 +77,12 @@ function SimpleReactorCard({ address }: { address: string }) {
   })
 
   return (
-    <Card className="cursor-target bg-black/50 backdrop-blur-md border border-white/10 hover:border-white/20 transition-all duration-300">
+    <Card className="cursor-target bg-black/70 backdrop-blur-md border-big-dashed shadow-xl hover:shadow-2xl rounded-none">
       <CardHeader className="pb-3">
         <div className="space-y-3">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className="text-lg font-bold tracking-wide">
                 {vaultName || `Vault ${address.slice(-6)}`}
               </CardTitle>
               <p className="text-xs text-muted-foreground font-mono mt-1">
@@ -94,13 +94,13 @@ function SimpleReactorCard({ address }: { address: string }) {
           {/* Token Pair */}
           <div className="flex items-center gap-2 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span className="text-yellow-500 font-medium">{neutronSymbol || "STABLE"}</span>
+              <div className="w-3 h-3 bg-yellow-500 rounded-none border border-yellow-400"></div>
+              <span className="text-yellow-500 font-bold tracking-wider">{neutronSymbol || "NEUTRON"}</span>
             </div>
-            <span className="text-muted-foreground">/</span>
+            <span className="text-muted-foreground font-bold">|</span>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-red-500 font-medium">{protonSymbol || "VOLATILE"}</span>
+              <div className="w-3 h-3 bg-red-500 rounded-none border border-red-400"></div>
+              <span className="text-red-500 font-bold tracking-wider">{protonSymbol || "PROTON"}</span>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ function SimpleReactorCard({ address }: { address: string }) {
           <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-muted-foreground">Stable Token</span>
+              <span className="text-muted-foreground">Neutron Token</span>
             </div>
             <span className="font-medium text-yellow-500">
               {neutronName || "Loading..."}
@@ -121,7 +121,7 @@ function SimpleReactorCard({ address }: { address: string }) {
           <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span className="text-muted-foreground">Volatile Token</span>
+              <span className="text-muted-foreground">Proton Token</span>
             </div>
             <span className="font-medium text-red-500">
               {protonName || "Loading..."}
@@ -263,32 +263,11 @@ export default function ExplorerPage() {
                   className="pl-12 h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 rounded-full transition-all duration-300 shadow-sm focus:shadow-md cursor-target"
                 />
               </div>
-
-              <div className="flex items-center justify-end">
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                    className="h-9 w-9 p-0 cursor-target"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "table" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("table")}
-                    className="h-9 w-9 p-0 cursor-target"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
             </div>
 
             {/* Content */}
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
                 {filteredReactorAddresses.map((address) => (
                   <SimpleReactorCard key={address} address={address} />
                 ))}
@@ -297,7 +276,7 @@ export default function ExplorerPage() {
               <div className="max-w-4xl mx-auto space-y-2">
                 {filteredReactorAddresses.map((address) => (
                   <Link key={address} href={`/c?coin=${address}`}>
-                    <div className="bg-card/50 border-2 border-white/10 rounded-lg p-4 hover:border-white/20 transition-all duration-300 group cursor-target">
+                    <div className="bg-black/70 backdrop-blur-md border-big-dashed group cursor-target shadow-lg hover:shadow-xl rounded-none p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="font-mono text-sm text-muted-foreground">

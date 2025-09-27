@@ -353,35 +353,33 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="fission" className="flex items-center gap-2">
+                  <TabsTrigger value="fission" className="flex items-center gap-2 border border-transparent data-[state=active]:border-white/20 data-[state=active]:bg-background/80">
                     <Split className="h-4 w-4" />
                     Fission
                   </TabsTrigger>
-                  <TabsTrigger value="fusion" className="flex items-center gap-2">
+                  <TabsTrigger value="fusion" className="flex items-center gap-2 border border-transparent data-[state=active]:border-white/20 data-[state=active]:bg-background/80">
                     <Merge className="h-4 w-4" />
                     Fusion
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="fission" className="space-y-4">
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      Split {baseSymbol} into {neutronSymbol} (stable) and {protonSymbol} (volatile) tokens.
-                      Fee: {formatFee(fissionFee)}
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm text-muted-foreground">Input Amount ({baseSymbol})</label>
+                  {/* Your Balance Section */}
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <h4 className="text-sm font-medium mb-2 text-center">Your Balance</h4>
+                    <div className="text-center">
+                      <span className="text-xs text-muted-foreground">Available {baseSymbol}: </span>
                       <button 
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-semibold hover:text-primary transition-colors"
                         onClick={() => baseBalance && setAmount(formatEther(baseBalance))}
                       >
-                        Balance: {formatBalance(baseBalance)}
+                        {formatBalance(baseBalance)}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Input Amount ({baseSymbol})</label>
                     
                     <Input
                       type="number"
@@ -421,21 +419,23 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                 </TabsContent>
 
                 <TabsContent value="fusion" className="space-y-4">
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      Burn {neutronSymbol} and {protonSymbol} to redeem {baseSymbol}.
-                      Fee: {formatFee(fusionFee)}
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm text-muted-foreground">Redeem Amount ({baseSymbol})</label>
-                      <div className="text-xs text-muted-foreground">
-                        {neutronSymbol}: {formatBalance(neutronBalance)} | {protonSymbol}: {formatBalance(protonBalance)}
+                  {/* Your Balance Section */}
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <h4 className="text-sm font-medium mb-2 text-center">Your Balance</h4>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="text-center">
+                        <p className="text-yellow-500 font-medium">{neutronSymbol}</p>
+                        <p className="font-bold text-sm">{formatBalance(neutronBalance)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-red-500 font-medium">{protonSymbol}</p>
+                        <p className="font-bold text-sm">{formatBalance(protonBalance)}</p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Redeem Amount ({baseSymbol})</label>
                     
                     <Input
                       type="number"
@@ -568,20 +568,27 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                 </ConnectButton.Custom>
               </div>
 
-              {/* Token Balances */}
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <h3 className="text-sm font-medium mb-3 text-center">Your Token Balances</h3>
-                <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                  <div className="text-center">
-                    <p className="text-yellow-500 font-medium">{neutronSymbol}</p>
-                    <p className="font-bold text-sm">{formatBalance(neutronBalance)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-red-500 font-medium">{protonSymbol}</p>
-                    <p className="font-bold text-sm">{formatBalance(protonBalance)}</p>
-                  </div>
-                </div>
+              {/* Information Alerts moved below the button */}
+              <div className="pt-4">
+                {activeTab === "fission" ? (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Split {baseSymbol} into {neutronSymbol} (stable) and {protonSymbol} (volatile) tokens.
+                      Fee: {formatFee(fissionFee)}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Burn {neutronSymbol} and {protonSymbol} to redeem {baseSymbol}.
+                      Fee: {formatFee(fusionFee)}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
+
 
               {/* System Info */}
               {systemHealth && (
@@ -600,58 +607,6 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                 </div>
               )}
 
-              {/* Pyth Oracle Status */}
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Pyth Oracle Status</h3>
-                  <Button
-                    onClick={() => refetchPrice()}
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-xs"
-                  >
-                    <ArrowUpDown className="h-3 w-3 mr-1" />
-                    Refresh
-                  </Button>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Price Feed ID:</span>
-                    <span className="font-mono text-xs">{formatPriceId(priceId)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Target Price:</span>
-                    <div className="flex items-center gap-2">
-                      {isPriceError ? (
-                        <Badge variant="destructive" className="text-xs px-2 py-0">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Error
-                        </Badge>
-                      ) : neutronTargetPrice ? (
-                        <>
-                          <span className="font-medium">${formatPrice(neutronTargetPrice)}</span>
-                          <Badge variant="default" className="text-xs px-2 py-0">
-                            <Activity className="h-3 w-3 mr-1" />
-                            Live
-                          </Badge>
-                        </>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs px-2 py-0">
-                          Loading...
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {isPriceError && (
-                    <Alert className="mt-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        Failed to fetch price from Pyth oracle. Check if price feeds are up to date or if the oracle is accessible.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

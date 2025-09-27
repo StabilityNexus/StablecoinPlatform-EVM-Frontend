@@ -1,22 +1,19 @@
 export const StableCoinFactories = {
   534351: '0x946B432be572405651452152eec8d17CE5a0f49b',
   5115: '0xd9E7848Ba881DABb8AF8C7b37fB681039B83DE50',
-  31: '0xBd29b285037af7a6CA200da456f04cc7b3594DF1'
+  31: '0xb8e5EcA6a81eA96F7B4B02d645361435238E99d2',
 } as {
   [key: number]: `0x${string}`
 }
 
-export const PythOracles = {
+export const Oracles = {
   534351: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729',
-  // Note: Pyth Oracle addresses for other chains need to be added
-  // when they become available. Currently only Scroll Sepolia is supported.
-  // 5115: 'TBD - Citrea Testnet Pyth Oracle address',
-  // 31: 'TBD - Rootstock Testnet Pyth Oracle address'
+  5115: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729',
+  31: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729'   
 } as {
   [key: number]: `0x${string}`
 }
 
-// Price feed IDs for Pyth oracle - organized by category
 export const PriceFeeds = {
   // Fiat Currencies
   'USD': '0xeaa020409c8c9b93e04e9b4e72f0e9c0bb5ae9b27f37db21eafe8e66e2b5d1d4', // USD/USD (1.0)
