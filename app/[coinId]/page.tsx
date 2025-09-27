@@ -8,6 +8,9 @@ export async function generateStaticParams() {
 // Enable dynamic routing for contract addresses not in generateStaticParams
 export const dynamicParams = true
 
+// Force dynamic rendering for routes that use searchParams
+export const dynamic = 'force-dynamic'
+
 export default function CoinDetailPage({ 
   params, 
   searchParams 
