@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ChainSelector } from "@/components/chain-selector"
 import PillNav from "@/components/PillNav"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useEffect, useState } from "react"
@@ -59,7 +58,6 @@ export default function Navigation() {
       
       {/* Additional controls positioned on the right */}
       <div className="absolute top-[1em] right-4 flex items-center gap-3 z-[1001]">
-        <ChainSelector />
         <ThemeToggle />
         <ConnectButton />
       </div>
