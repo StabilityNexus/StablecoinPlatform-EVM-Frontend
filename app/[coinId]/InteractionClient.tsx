@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
 import { parseEther, formatEther } from "viem"
 import { Button } from "@/components/ui/button"
@@ -32,18 +32,13 @@ interface ReactorData {
   fusionFee: bigint
 }
 
-export default function InteractionClient({ 
-  params, 
-  searchParams 
-}: { 
-  params: { coinId: string }
-  searchParams: { coin?: string }
-}) {
+export default function InteractionClient({ coinId }: { coinId: string }) {
   const { address, isConnected } = useAccount()
+  const searchParams = useSearchParams()
   
   // Handle both path parameter and query parameter approaches
   // If coinId is 'c', use the 'coin' query parameter, otherwise use coinId as the address
-  const reactorAddress = params.coinId === 'c' ? searchParams.coin : params.coinId
+  const reactorAddress = coinId === 'c' ? searchParams.get('coin') : coinId
   
   const [activeTab, setActiveTab] = useState("fission")
   const [amount, setAmount] = useState("")

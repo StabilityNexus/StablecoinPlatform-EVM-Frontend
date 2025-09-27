@@ -8,19 +8,10 @@ export async function generateStaticParams() {
 // Enable dynamic routing for contract addresses not in generateStaticParams
 export const dynamicParams = true
 
-// Force dynamic rendering for routes that use searchParams
-export const dynamic = 'force-dynamic'
-
-export default function CoinDetailPage({ 
-  params, 
-  searchParams 
-}: { 
-  params: { coinId: string }
-  searchParams: { coin?: string }
-}) {
+export default function CoinDetailPage({ params }: { params: { coinId: string } }) {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-      <InteractionClient params={params} searchParams={searchParams} />
+      <InteractionClient coinId={params.coinId} />
     </Suspense>
   )
 }
