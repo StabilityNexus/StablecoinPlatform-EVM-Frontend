@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type Stablecoin, formatNumber, formatPrice, formatPercentage } from "@/lib/demo-data"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 interface StablecoinCardProps {
   stablecoin: Stablecoin
@@ -11,8 +12,17 @@ interface StablecoinCardProps {
 export function StablecoinCard({ stablecoin }: StablecoinCardProps) {
   const isPositiveChange = stablecoin.change24h >= 0
 
+  const cardStyle = {
+    fontFamily: "'Orbitron', 'Space Mono', 'Courier New', monospace",
+    fontWeight: "500",
+    letterSpacing: "0.02em"
+  }
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card 
+      className="cursor-target" 
+      style={cardStyle}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -20,8 +30,8 @@ export function StablecoinCard({ stablecoin }: StablecoinCardProps) {
               <span className="text-primary-foreground font-bold text-lg">{stablecoin.symbol.charAt(0)}</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{stablecoin.name}</h3>
-              <p className="text-muted-foreground text-sm">{stablecoin.symbol}</p>
+              <h3 className="font-semibold text-lg" style={{ textShadow: "0 0 5px rgba(255, 255, 255, 0.1)" }}>{stablecoin.name}</h3>
+              <p className="text-muted-foreground text-sm" style={{ textShadow: "0 0 3px rgba(255, 255, 255, 0.1)" }}>{stablecoin.symbol}</p>
             </div>
           </div>
           <Badge variant="secondary">{stablecoin.blockchain}</Badge>
@@ -31,36 +41,12 @@ export function StablecoinCard({ stablecoin }: StablecoinCardProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Price</p>
-            <p className="text-xl font-bold">{formatPrice(stablecoin.price)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">24h Change</p>
-            <p className={cn("text-xl font-bold", isPositiveChange ? "text-green-600" : "text-red-600")}>
-              {formatPercentage(stablecoin.change24h)}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
             <p className="text-sm text-muted-foreground">Market Cap</p>
             <p className="font-semibold">{formatNumber(stablecoin.marketCap)}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">24h Volume</p>
-            <p className="font-semibold">{formatNumber(stablecoin.volume24h)}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
             <p className="text-sm text-muted-foreground">Total Supply</p>
             <p className="font-semibold">{formatNumber(stablecoin.totalSupply)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Collateral Ratio</p>
-            <p className="font-semibold">{stablecoin.collateralRatio}%</p>
           </div>
         </div>
 
@@ -70,9 +56,15 @@ export function StablecoinCard({ stablecoin }: StablecoinCardProps) {
         </div>
 
         <div className="pt-2">
-          <Button className="w-full bg-transparent" variant="outline">
-            View Details
-          </Button>
+          <Link href={`/${stablecoin.id}`}>
+            <Button 
+              className="w-full bg-transparent cursor-target border-white/20" 
+              variant="outline"
+              style={{ letterSpacing: "0.05em", textShadow: "0 0 3px rgba(255, 255, 255, 0.1)" }}
+            >
+              View Details
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>
