@@ -1,5 +1,7 @@
 export const StableCoinFactories = {
-  534351: '0x946B432be572405651452152eec8d17CE5a0f49b'
+  534351: '0x946B432be572405651452152eec8d17CE5a0f49b',
+  5115: '0xd9E7848Ba881DABb8AF8C7b37fB681039B83DE50',
+  31: '0xBd29b285037af7a6CA200da456f04cc7b3594DF1'
 } as {
   [key: number]: `0x${string}`
 }
