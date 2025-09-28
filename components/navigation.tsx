@@ -9,8 +9,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 
 const navItems = [
+  { href: "/", label: "Home" },
   { href: "/explorer", label: "Explorer" },
-  { href: "/my-coins", label: "My Coins" },
   { href: "/create", label: "Create" },
 ]
 

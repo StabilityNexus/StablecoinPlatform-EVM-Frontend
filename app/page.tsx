@@ -92,22 +92,22 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5, duration: 0.5 }}
                     >
-                      Get exposure to stability with Neutron.
+                      Get exposure to stability with Proton.
                       <br />
-                      Neutron is the stablecoin pegged to price of 1 backed token.
+                      Proton is the stablecoin pegged to price of 1 backed token.
                       <br /><br />
-                      Get leveraged volatility and yield with Proton.
+                      Get leveraged volatility and yield with Neutron.
                       <br />
-                      Proton tokenizes the reserve surplus.
+                      Neutron tokenizes the reserve surplus.
                       <br /><br />
-                      Both Neutron and Proton are fully backed by ERC-20 tokens.
+                      Both Proton and Neutron are fully backed by ERC-20 tokens.
                     </motion.p>
                   </div>
                 </div>
                 <div className="grid lg:pl-6 grid-cols-1 items-start gap-6">
                   {[
-                    { icon: "⚡", title: "Fission", description: "Splits ERC-20 tokens into Neutron stable tokens and Proton volatile tokens" },
-                    { icon: "✨", title: "Fusion", description: "Merges Neutron stable tokens and Proton volatile tokens into ERC-20 tokens" }
+                    { icon: "⚡", title: "Fission", description: "Splits ERC-20 tokens into Proton stable tokens and Neutron volatile tokens" },
+                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into ERC-20 tokens" }
                   ].map((item, index) => (
                     <motion.div
                       key={item.title}
@@ -134,17 +134,17 @@ export default function HomePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                {/* Fission: ERC-20 -> Neutron + Proton */}
+                {/* Fission: ERC-20 -> Proton + Neutron */}
                 <TokenFlow
                   title="Fission"
                   fromTokens={['ERC-20']}
-                  toTokens={['Neutron', 'Proton']}
+                  toTokens={['Proton', 'Neutron']}
                 />
 
-                {/* Fusion: Neutron + Proton -> ERC-20 */}
+                {/* Fusion: Proton + Neutron -> ERC-20 */}
                 <TokenFlow
                   title="Fusion"
-                  fromTokens={['Neutron', 'Proton']}
+                  fromTokens={['Proton', 'Neutron']}
                   toTokens={['ERC-20']}
                   reverse={false}
                 />
@@ -211,7 +211,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Powered by Pyth Network's real-time price feeds for accurate and reliable asset pricing. Get sub-second price updates across multiple asset classes including fiat, crypto, and commodities.
+                  Powered by different Oracles real-time price feeds for accurate and reliable asset pricing. Get sub-second price updates across multiple asset classes including fiat, crypto, and commodities.
                 </p>
               </CardContent>
             </Card>
