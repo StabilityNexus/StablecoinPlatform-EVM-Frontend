@@ -7,12 +7,12 @@ function HeroText() {
     const [titleNumber, setTitleNumber] = useState(0);
     const titles = useMemo(
         () => [
-            "Decentralized Stablecoins", 
-            "Autonomous Stablecoins", 
-            "Permissionless Stablecoins", 
-            "Transparent Stablecoins", 
-            "Fully Crypto Backed Stablecoins", 
-            "Anything-Pegged Stablecoins"
+            "Decentralized", 
+            "Autonomous", 
+            "Permissionless", 
+            "Transparent", 
+            "Fully Crypto Backed", 
+            "Anything-Pegged"
         ],
         []
     );
@@ -51,14 +51,13 @@ function HeroText() {
                                         }
                                 }
                             >
-                                <span className="mr-2">{title.split(' ').slice(0, -1).join(' ')}</span>
-                                <span className="text-primary">{title.split(' ').slice(-1)[0]}</span>
+                                <span className="text-primary">{title}</span>
                             </motion.span>
                         ))}
                     </span>
                 </div>
                 <div className="mt-2">
-                    <span className="block text-muted-foreground">On Bitcoin</span>
+                    <span className="block font-bold">Stablecoins</span>
                 </div>
             </div>
         </h1>
