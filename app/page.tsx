@@ -177,7 +177,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Revolutionary fission/fusion mechanics split assets into Neutron (stable) and Proton (volatile) tokens. Get exposure to both stability and leveraged volatility from a single underlying asset.
+                  Revolutionary fission/fusion mechanics split assets into Proton (stable) and Neutron (volatile) tokens. Get exposure to both stability and leveraged volatility from a single underlying asset.
                 </p>
               </CardContent>
             </Card>
