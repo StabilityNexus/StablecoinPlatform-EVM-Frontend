@@ -1,7 +1,5 @@
 import { useReadContract } from "wagmi"
-import { StableCoinFactoryABI } from "@/utils/abi/StableCoinFactory"
 import { StableCoinReactorABI, ERC20ABI } from "@/utils/abi/StableCoin"
-import { StableCoinFactories } from "@/utils/addresses"
 
 export interface ReactorData {
   address: string
@@ -24,124 +22,182 @@ export interface ReactorData {
 }
 
 export function useReactorInfo(reactorAddress: string) {
-  // Get basic reactor info from factory
-  const { data: factoryInfo, isLoading: isLoadingFactoryInfo } = useReadContract({
-    address: StableCoinFactories[534351],
-    abi: StableCoinFactoryABI,
-    functionName: 'getReactorInfo',
-    args: [reactorAddress as `0x${string}`],
-    query: {
-      enabled: !!reactorAddress && reactorAddress !== "",
-    }
-  })
+  const enabledQuery = !!reactorAddress && reactorAddress !== ""
 
-  // Get vault name directly from reactor
-  const { data: vaultName } = useReadContract({
+  const { data: vaultName, isLoading: isLoadingVault } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: 'vaultName',
+    functionName: "vaultName",
     query: {
-      enabled: !!reactorAddress && reactorAddress !== "",
-    }
+      enabled: enabledQuery,
+    },
   })
 
-  // Get system health
-  const { data: systemHealth } = useReadContract({
+  const { data: base } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: 'systemHealth',
+    functionName: "base",
     query: {
-      enabled: !!reactorAddress && reactorAddress !== "",
-    }
+      enabled: enabledQuery,
+    },
   })
 
-  // Get token symbols if we have token addresses from factoryInfo
+  const { data: neutron } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "neutron",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: proton } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "proton",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: treasury } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "treasury",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: reserve } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "reserve",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: neutronSupply } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "neutronSupply",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: protonSupply } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "protonSupply",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: reserveRatio } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "reserveRatioPeggedAsset",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
+  const { data: isAboveTarget } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "isAboveTargetReserveRatio",
+    query: {
+      enabled: enabledQuery,
+    },
+  })
+
   const { data: neutronSymbol } = useReadContract({
-    address: factoryInfo?.[2] as `0x${string}`, // neutron address
+    address: neutron as `0x${string}`,
     abi: ERC20ABI,
-    functionName: 'symbol',
+    functionName: "symbol",
     query: {
-      enabled: !!factoryInfo?.[2],
-    }
+      enabled: !!neutron,
+    },
   })
 
   const { data: neutronName } = useReadContract({
-    address: factoryInfo?.[2] as `0x${string}`, // neutron address
+    address: neutron as `0x${string}`,
     abi: ERC20ABI,
-    functionName: 'name',
+    functionName: "name",
     query: {
-      enabled: !!factoryInfo?.[2],
-    }
+      enabled: !!neutron,
+    },
   })
 
   const { data: protonSymbol } = useReadContract({
-    address: factoryInfo?.[3] as `0x${string}`, // proton address
+    address: proton as `0x${string}`,
     abi: ERC20ABI,
-    functionName: 'symbol',
+    functionName: "symbol",
     query: {
-      enabled: !!factoryInfo?.[3],
-    }
+      enabled: !!proton,
+    },
   })
 
   const { data: protonName } = useReadContract({
-    address: factoryInfo?.[3] as `0x${string}`, // proton address
+    address: proton as `0x${string}`,
     abi: ERC20ABI,
-    functionName: 'name',
+    functionName: "name",
     query: {
-      enabled: !!factoryInfo?.[3],
-    }
+      enabled: !!proton,
+    },
   })
 
   const { data: baseSymbol } = useReadContract({
-    address: factoryInfo?.[1] as `0x${string}`, // base address
+    address: base as `0x${string}`,
     abi: ERC20ABI,
-    functionName: 'symbol',
+    functionName: "symbol",
     query: {
-      enabled: !!factoryInfo?.[1],
-    }
+      enabled: !!base,
+    },
   })
 
-  // Demo prices for different base tokens
-  const demoPrices: { [key: string]: number } = {
-    "USDC": 1.00,
-    "USDT": 0.99,
-    "WETH": 3420.50,
-    "WBTC": 67830.25,
-    "DAI": 1.01,
+  const demoPrices: Record<string, number> = {
+    USDC: 1,
+    USDT: 1,
+    WETH: 3420.5,
+    WBTC: 67830.25,
+    DAI: 1.01,
   }
 
-  // Combine all data
-  if (factoryInfo && systemHealth) {
+  if (base && neutron && proton && reserve && neutronSupply !== undefined && protonSupply !== undefined) {
     const reactorData: ReactorData = {
       address: reactorAddress,
       vaultName: vaultName || `Vault ${reactorAddress.slice(-6)}`,
-      base: factoryInfo[1] as string,
-      neutron: factoryInfo[2] as string,
-      proton: factoryInfo[3] as string,
-      treasury: factoryInfo[4] as string,
-      reserve: factoryInfo[5] as bigint,
-      neutronSupply: factoryInfo[6] as bigint,
-      protonSupply: factoryInfo[7] as bigint,
-      reserveRatio: systemHealth[0] as bigint,
-      isHealthy: systemHealth[2] as boolean,
+      base: base,
+      neutron: neutron,
+      proton: proton,
+      treasury: treasury || "",
+      reserve: reserve,
+      neutronSupply: neutronSupply,
+      protonSupply: protonSupply,
+      reserveRatio: reserveRatio || BigInt(0),
+      isHealthy: isAboveTarget ?? true,
       neutronSymbol,
       protonSymbol,
       neutronName,
       protonName,
       baseSymbol,
-      basePrice: demoPrices[baseSymbol as string] || 1.00
+      basePrice: demoPrices[baseSymbol as string] || 1,
     }
 
     return {
       data: reactorData,
-      isLoading: isLoadingFactoryInfo,
-      isError: false
+      isLoading: isLoadingVault,
+      isError: false,
     }
   }
 
   return {
     data: null,
-    isLoading: isLoadingFactoryInfo,
-    isError: false
+    isLoading: isLoadingVault,
+    isError: false,
   }
 }
