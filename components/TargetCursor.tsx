@@ -7,12 +7,14 @@ export interface TargetCursorProps {
   targetSelector?: string;
   spinDuration?: number;
   hideDefaultCursor?: boolean;
+  ignoreSelector?: string;
 }
 
 const TargetCursor: React.FC<TargetCursorProps> = ({
   targetSelector = '.cursor-target',
   spinDuration = 2,
-  hideDefaultCursor = true
+  hideDefaultCursor = true,
+  ignoreSelector
 }) => {
   const cursorRef = useRef<HTMLDivElement>(null);
   const cornersRef = useRef<NodeListOf<HTMLDivElement>>(null);
@@ -41,9 +43,6 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     if (!cursorRef.current) return;
 
     const originalCursor = document.body.style.cursor;
-    if (hideDefaultCursor) {
-      document.body.style.cursor = 'none';
-    }
 
     const cursor = cursorRef.current;
     cornersRef.current = cursor.querySelectorAll<HTMLDivElement>('.target-cursor-corner');
@@ -69,7 +68,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       xPercent: -50,
       yPercent: -50,
       x: window.innerWidth / 2,
-      y: window.innerHeight / 2
+      y: window.innerHeight / 2,
+      opacity: 0
     });
 
     const createSpinTimeline = () => {
@@ -126,12 +126,30 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       const directTarget = e.target as Element;
 
       const allTargets: Element[] = [];
-      let current = directTarget;
+      let blockedByIgnore = false;
+      let current: Element | null = directTarget;
       while (current && current !== document.body) {
+        if (ignoreSelector && current.matches(ignoreSelector)) {
+          blockedByIgnore = true;
+          break;
+        }
         if (current.matches(targetSelector)) {
           allTargets.push(current);
         }
-        current = current.parentElement!;
+        current = current.parentElement;
+      }
+
+      if (blockedByIgnore) {
+        if (activeTarget && currentLeaveHandler) {
+          currentLeaveHandler();
+        }
+        if (hideDefaultCursor) {
+          document.body.style.cursor = originalCursor;
+        }
+        if (cursorRef.current) {
+          gsap.to(cursorRef.current, { opacity: 0, duration: 0.2, ease: 'power2.out' });
+        }
+        return;
       }
 
       const target = allTargets[0] || null;
@@ -157,6 +175,10 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       spinTl.current?.pause();
 
       gsap.set(cursorRef.current, { rotation: 0 });
+      gsap.to(cursorRef.current, { opacity: 1, duration: 0.2, ease: 'power2.out' });
+      if (hideDefaultCursor) {
+        document.body.style.cursor = 'none';
+      }
 
       const updateCorners = (mouseX?: number, mouseY?: number) => {
         const rect = target.getBoundingClientRect();
@@ -240,6 +262,12 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       const leaveHandler = () => {
         activeTarget = null;
         isAnimatingToTarget = false;
+        if (hideDefaultCursor) {
+          document.body.style.cursor = originalCursor;
+        }
+        if (cursorRef.current) {
+          gsap.to(cursorRef.current, { opacity: 0, duration: 0.2, ease: 'power2.out' });
+        }
 
         if (cornersRef.current) {
           const corners = Array.from(cornersRef.current);
@@ -314,7 +342,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       spinTl.current?.kill();
       document.body.style.cursor = originalCursor;
     };
-  }, [targetSelector, spinDuration, moveCursor, constants, hideDefaultCursor]);
+  }, [targetSelector, spinDuration, moveCursor, constants, hideDefaultCursor, ignoreSelector]);
 
   useEffect(() => {
     if (!cursorRef.current || !spinTl.current) return;
@@ -331,7 +359,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     <div
       ref={cursorRef}
       className="fixed top-0 left-0 w-0 h-0 pointer-events-none z-[9999] mix-blend-difference transform -translate-x-1/2 -translate-y-1/2"
-      style={{ willChange: 'transform' }}
+      style={{ willChange: 'transform, opacity' }}
     >
       <div
         ref={dotRef}

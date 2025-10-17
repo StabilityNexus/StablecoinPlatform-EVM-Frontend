@@ -29,14 +29,17 @@ function HeroText() {
     }, [titleNumber, titles]);
 
     return (
-        <h1 className="text-5xl lg:text-7xl font-bold mb-6">
-            <div className="flex flex-col items-center">
+        <h1
+            className="text-3xl lg:text-5xl font-semibold mb-6 tracking-[0.25em] uppercase"
+            style={{ fontFamily: "'Space Mono', 'Syne', 'Orbitron', 'Courier New', monospace" }}
+        >
+            <div className="flex flex-col items-center gap-2">
                 <div className="text-center">
                     <span className="relative inline-block h-[1.3em] text-center w-full">
                         {titles.map((title, index) => (
                             <motion.span
                                 key={index}
-                                className="absolute inset-0 flex items-center justify-center font-bold whitespace-nowrap"
+                                className="absolute inset-0 flex items-center justify-center font-bold whitespace-nowrap tracking-[0.35em]"
                                 initial={{ opacity: 0, y: 50 }}
                                 transition={{ type: "spring", stiffness: 60, damping: 25 }}
                                 animate={
@@ -57,7 +60,7 @@ function HeroText() {
                     </span>
                 </div>
                 <div className="mt-2">
-                    <span className="block font-bold">Stablecoins</span>
+                    <span className="block font-semibold tracking-[0.4em]">Stablecoins</span>
                 </div>
             </div>
         </h1>

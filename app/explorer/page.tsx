@@ -4,11 +4,8 @@ import { useState, useEffect } from "react"
 import { useReadContract, useChainId } from "wagmi"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Search, Filter, Grid3X3, List, ExternalLink, Activity, Shield, AlertTriangle, Rocket } from "lucide-react"
+import { Search, ExternalLink, Activity, Shield, AlertTriangle, Rocket } from "lucide-react"
 import { StableCoinFactoryABI } from "@/utils/abi/StableCoinFactory"
 import { StableCoinReactorABI, ERC20ABI } from "@/utils/abi/StableCoin"
 import { StableCoinFactories } from "@/utils/addresses"
@@ -201,7 +198,10 @@ export default function ExplorerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ fontFamily: "'Orbitron', 'Space Mono', 'Courier New', monospace", fontWeight: "500" }}>
+    <div
+      className="min-h-screen"
+      style={{ fontFamily: "'Space Mono', 'Syne', 'Orbitron', 'Courier New', monospace", fontWeight: 500 }}
+    >
       {/* Target Cursor Effect */}
       <TargetCursor 
         spinDuration={2}
@@ -214,7 +214,7 @@ export default function ExplorerPage() {
           <Shuffle
             text="StableCoin Reactor Explorer"
             tag="h1"
-            className="text-5xl font-bold mb-2"
+            className="text-5xl mb-2"
             shuffleDirection="right"
             duration={0.35}
             animationMode="evenodd"

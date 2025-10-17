@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import LightRays from "@/components/LightRays"
-import Shuffle from "@/components/Shuffle"
 import TargetCursor from "@/components/TargetCursor"
 import TokenFlow from "@/components/TokenFlow"
 import { HeroText } from "@/components/HeroText"
@@ -12,7 +11,10 @@ import { motion } from "framer-motion"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen relative">
+    <div
+      className="min-h-screen relative"
+      style={{ fontFamily: "'Inter', 'Helvetica Neue', 'Arial', sans-serif", fontWeight: 400 }}
+    >
       {/* Target Cursor Effect */}
       <TargetCursor 
         spinDuration={2}
@@ -39,7 +41,7 @@ export default function HomePage() {
           <div className="text-center">
             <HeroText />
             <p className="text-xl text-muted-foreground mb-8 text-pretty max-w-2xl mx-auto">
-              Launch your own stablecoin with our intuitive platform. Maintain price stability, ensure transparency, and
+              Launch your own stablecoin. Maintain price stability and
               build trust in the decentralized economy.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -100,14 +102,14 @@ export default function HomePage() {
                       <br />
                       Neutron tokenizes the reserve surplus.
                       <br /><br />
-                      Both Proton and Neutron are fully backed by ERC-20 tokens.
+                      Both Proton and Neutron are fully backed by Fungible-Tokens tokens.
                     </motion.p>
                   </div>
                 </div>
                 <div className="grid lg:pl-6 grid-cols-1 items-start gap-6">
                   {[
-                    { icon: "⚡", title: "Fission", description: "Splits ERC-20 tokens into Proton stable tokens and Neutron volatile tokens" },
-                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into ERC-20 tokens" }
+                    { icon: "⚡", title: "Fission", description: "Splits Fungible-Tokens tokens into Proton stable tokens and Neutron volatile tokens" },
+                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into Fungible-Tokens tokens" }
                   ].map((item, index) => (
                     <motion.div
                       key={item.title}
@@ -134,18 +136,18 @@ export default function HomePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                {/* Fission: ERC-20 -> Proton + Neutron */}
+                {/* Fission: Fungible-Tokens -> Proton + Neutron */}
                 <TokenFlow
                   title="Fission"
-                  fromTokens={['ERC-20']}
+                  fromTokens={['Fungible Token']}
                   toTokens={['Proton', 'Neutron']}
                 />
 
-                {/* Fusion: Proton + Neutron -> ERC-20 */}
+                {/* Fusion: Proton + Neutron -> Fungible-Tokens */}
                 <TokenFlow
                   title="Fusion"
                   fromTokens={['Proton', 'Neutron']}
-                  toTokens={['ERC-20']}
+                  toTokens={['Fungible Token']}
                   reverse={false}
                 />
               </motion.div>

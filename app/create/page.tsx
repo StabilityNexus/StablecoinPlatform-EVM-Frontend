@@ -1,16 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
+import { parseUnits } from "viem"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Wallet, Rocket, CheckCircle, Zap } from "lucide-react"
+import { Wallet, CheckCircle, Zap } from "lucide-react"
+import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { StableCoinFactoryABI } from "@/utils/abi/StableCoinFactory"
-import { StableCoinFactories, Oracles, PriceFeedCategories } from "@/utils/addresses"
+import { StableCoinFactories } from "@/utils/addresses"
 import { toast } from "sonner"
 import Shuffle from "@/components/Shuffle"
 import TargetCursor from "@/components/TargetCursor"
@@ -22,16 +21,11 @@ interface ReactorConfig {
   protonName: string  
   protonSymbol: string
   baseToken: string
-  pegAsset: string
+  oracleAddress: string
   priceId: string
   treasury: string
+  targetReserveRatio: string
 }
-
-const RISK_LEVELS = [
-  { value: 0, label: "Conservative (90%)", description: "Lower risk, higher stability" },
-  { value: 1, label: "Moderate (80%)", description: "Balanced risk and yield" },
-  { value: 2, label: "Aggressive (70%)", description: "Higher risk, higher potential yield" }
-]
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount()
@@ -43,13 +37,14 @@ export default function CreatePage() {
     protonName: "",
     protonSymbol: "",
     baseToken: "",
-    pegAsset: "USD",
-    priceId: PriceFeedCategories['Fiat Currencies'][0].priceId,
+    oracleAddress: "",
+    priceId: "",
     treasury: address || "",
+    targetReserveRatio: "400",
   })
 
   // Contract interaction
-  const { data: hash, isPending: isDeploying, writeContract } = useWriteContract()
+  const { data: hash, isPending: isDeploying, writeContractAsync } = useWriteContract()
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -59,10 +54,14 @@ export default function CreatePage() {
     setConfig((prev) => ({ ...prev, [field]: value }))
   }
 
-  // Set treasury to user address when they connect
-  if (isConnected && address && !config.treasury) {
-    setConfig(prev => ({ ...prev, treasury: address }))
-  }
+  const [hasSetDefaultTreasury, setHasSetDefaultTreasury] = useState(false)
+
+  useEffect(() => {
+    if (isConnected && address && config.treasury === "" && !hasSetDefaultTreasury) {
+      setConfig((prev) => ({ ...prev, treasury: address }))
+      setHasSetDefaultTreasury(true)
+    }
+  }, [isConnected, address, config.treasury, hasSetDefaultTreasury])
 
   const isFormValid = () => {
     return config.vaultName &&
@@ -71,17 +70,19 @@ export default function CreatePage() {
            config.protonName && 
            config.protonSymbol && 
            config.baseToken && 
+           config.oracleAddress &&
            config.treasury &&
-           config.priceId
+           config.priceId &&
+           config.targetReserveRatio
   }
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     if (!isConnected) {
       toast.error("Please connect your wallet first")
       return
     }
 
-    if (!writeContract) {
+    if (!writeContractAsync) {
       toast.error("Contract write function not available")
       return
     }
@@ -92,36 +93,75 @@ export default function CreatePage() {
     }
 
     const factoryAddress = StableCoinFactories[chainId as keyof typeof StableCoinFactories]
-    const pythOracleAddress = Oracles[chainId as keyof typeof Oracles]
 
     if (!factoryAddress) {
       toast.error(`Chain ID ${chainId} is not supported. Please switch to Citrea Testnet, Rootstock Testnet, or Scroll Sepolia.`)
       return
     }
 
-    if (!pythOracleAddress) {
-      toast.error(`Pyth Oracle not configured for Chain ID ${chainId}. Please contact support.`)
+    const vaultName = config.vaultName.trim()
+    if (!vaultName) {
+      toast.error("Vault name cannot be empty")
       return
     }
 
+    const baseToken = config.baseToken.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/.test(baseToken)) {
+      toast.error("Base token must be a 20-byte checksum address")
+      return
+    }
+
+    const oracleAddress = config.oracleAddress.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/.test(oracleAddress)) {
+      toast.error("Oracle address must be a 20-byte checksum address")
+      return
+    }
+
+    const trimmedPriceId = config.priceId.trim()
+    if (!/^0x[0-9a-fA-F]{64}$/.test(trimmedPriceId)) {
+      toast.error("Price feed ID must be a 32-byte hex value")
+      return
+    }
+
+    const treasuryAddress = config.treasury.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/.test(treasuryAddress)) {
+      toast.error("Treasury address must be a 20-byte checksum address")
+      return
+    }
+
+    const ratioValue = Number(config.targetReserveRatio)
+    if (Number.isNaN(ratioValue) || ratioValue < 100) {
+      toast.error("Target reserve ratio must be at least 100%")
+      return
+    }
+
+    const targetReserveRatioWad = parseUnits((ratioValue / 100).toString(), 18)
+    if (targetReserveRatioWad < parseUnits("1", 18)) {
+      toast.error("Target reserve ratio must be at least 100%")
+      return
+    }
+
+    const account = address as `0x${string}`
+
     try {
-      writeContract({
+      await writeContractAsync({
+        account,
         address: factoryAddress,
         abi: StableCoinFactoryABI,
         functionName: 'deployReactor',
         args: [
-          config.vaultName,
-          config.baseToken as `0x${string}`,
-          pythOracleAddress,
-          config.priceId as `0x${string}`,
-          BigInt(3600), // 1 hour max price age
+          vaultName,
+          baseToken as `0x${string}`,
+          oracleAddress as `0x${string}`,
+          trimmedPriceId as `0x${string}`,
           config.neutronName,
           config.neutronSymbol,
           config.protonName,
           config.protonSymbol,
-          config.treasury as `0x${string}`,
+          treasuryAddress as `0x${string}`,
           BigInt(5000000000000000), // 0.5% fission fee (0.005e18)
-          BigInt(5000000000000000)  // 0.5% fusion fee (0.005e18)
+          BigInt(5000000000000000), // 0.5% fusion fee (0.005e18)
+          targetReserveRatioWad
         ]
       })
     } catch (error) {
@@ -130,244 +170,255 @@ export default function CreatePage() {
     }
   }
 
+  const fieldBaseClasses =
+    "bg-[#0B0E15] border border-white/30 text-[13px] font-semibold tracking-[0.2em] text-white/85 placeholder:text-white/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70 focus:border-white/60 transition-colors duration-200 px-4 rounded-none font-mono cursor-text"
+  const inputClasses = `${fieldBaseClasses} h-12`
+
   return (
-    <div className="min-h-screen" style={{ fontFamily: "'Orbitron', 'Space Mono', 'Courier New', monospace", fontWeight: "500" }}>
+    <div
+      className="min-h-screen bg-[#050608] text-white"
+      style={{ fontFamily: "'Space Mono', 'Syne', 'Orbitron', 'Courier New', monospace", fontWeight: "500" }}
+    >
       {/* Target Cursor Effect */}
       <TargetCursor 
         spinDuration={2}
-        hideDefaultCursor={true}
+        hideDefaultCursor={false}
+        ignoreSelector=".cursor-normal, input, textarea, select, button, .cursor-text, [role='combobox']"
       />
-      
-      <div className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <Shuffle
-            text="Deploy Reactor"
-            tag="h1"
-            className="text-5xl font-bold mb-2"
-            shuffleDirection="right"
-            duration={0.35}
-            animationMode="evenodd"
-            shuffleTimes={1}
-            ease="power3.out"
-            stagger={0.03}
-            threshold={0.1}
-            triggerOnce={true}
-            triggerOnHover={true}
-            respectReducedMotion={true}
-          />
-          <p className="font-light text-foreground text-xl" style={{ letterSpacing: "0.05em", textShadow: "0 0 10px rgba(255, 255, 255, 0.2)" }}>
-            Create a dual-token reactor system
-          </p>
-        </div>
 
-        {/* Connection Status */}
-        {!isConnected && (
-          <div className="max-w-md mx-auto mb-8">
-            <div className="bg-card/50 border-2 border-white/10 rounded-lg p-4 hover:border-white/20 transition-all duration-300">
-              <div className="flex items-center gap-3">
-                <Wallet className="h-5 w-5 text-muted-foreground" />
-                <p className="text-muted-foreground">Connect your wallet to deploy a reactor</p>
+      <div className="flex min-h-screen items-center justify-center px-4 py-16">
+        <div className="w-full max-w-3xl mx-auto">
+          <div className="relative overflow-hidden border border-white/25 bg-[#090B11]/85 shadow-[0_0_60px_rgba(0,0,0,0.65)] backdrop-blur-sm cursor-normal">
+            <div className="flex items-center justify-between border-b border-white/20 bg-[#050608]/80 px-8 py-6 uppercase tracking-[0.3em] text-xs text-white/60">
+              <div className="flex items-center gap-4 text-white">
+                <span className="text-sm font-bold text-[#8FF7FF]">//</span>
+                <Shuffle
+                  text="Create Your Reactor"
+                  tag="span"
+                  className="text-sm font-semibold"
+                  shuffleDirection="right"
+                  duration={0.3}
+                  animationMode="random"
+                  shuffleTimes={1}
+                  ease="power3.out"
+                  stagger={0.02}
+                  threshold={0.1}
+                  triggerOnce
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-10 rounded-full border border-white/15 bg-white/10" />
+                <span className="h-2 w-4 rounded-full border border-white/15 bg-white/5" />
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Single Form */}
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-card/50 border-2 border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all duration-300">
-            
-            {/* Form Content */}
-            <div className="p-8 space-y-8">
-              
-              {/* Vault Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold" style={{ letterSpacing: "0.02em" }}>
-                  Vault Information
-                </h3>
-                <div>
-                  <Label className="text-sm text-muted-foreground" style={{ letterSpacing: "0.02em" }}>Vault Name</Label>
+            <div className="grid gap-10 px-8 py-10">
+
+              {!isConnected && (
+                <div className="flex items-center gap-3 border border-dashed border-white/30 bg-black/30 px-5 py-4 text-white/60">
+                  <Wallet className="h-5 w-5" />
+                  <span className="tracking-[0.2em] uppercase text-[11px]">
+                    Connect your wallet to authorize deployment
+                  </span>
+                </div>
+              )}
+
+              <div className="grid gap-8">
+                <div className="space-y-2">
+                  <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                    Vault Name
+                  </Label>
                   <Input
-                    placeholder="e.g., Gold Backed Vault"
+                    placeholder="Gold Backed Vault"
                     value={config.vaultName}
                     onChange={(e) => updateConfig("vaultName", e.target.value)}
-                    className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target"
+                    className={inputClasses}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                    Base Token (Collateral)
+                  </Label>
+                  <Input
+                    placeholder="0x..."
+                    value={config.baseToken}
+                    onChange={(e) => updateConfig("baseToken", e.target.value)}
+                    className={`${inputClasses} font-mono`}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                    Oracle (Pyth) Address
+                  </Label>
+                  <Input
+                    placeholder="0x..."
+                    value={config.oracleAddress}
+                    onChange={(e) => updateConfig("oracleAddress", e.target.value)}
+                    className={`${inputClasses} font-mono`}
+                  />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                      Target Reserve Ratio (%)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={100}
+                      step={1}
+                      placeholder="400"
+                      value={config.targetReserveRatio}
+                      onChange={(e) => updateConfig("targetReserveRatio", e.target.value)}
+                      className={inputClasses}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                      Price Feed ID
+                    </Label>
+                    <Input
+                      value={config.priceId}
+                      placeholder="0x..."
+                      onChange={(e) => updateConfig("priceId", e.target.value)}
+                      className={`${inputClasses} font-mono text-xs`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-[0.35em] text-[#FFE66D]">
+                      Stable Token
+                    </p>
+                    <Input
+                      placeholder="Token Name"
+                      value={config.neutronName}
+                      onChange={(e) => updateConfig("neutronName", e.target.value)}
+                      className={inputClasses}
+                    />
+                    <Input
+                      placeholder="SYMBOL"
+                      value={config.neutronSymbol}
+                      onChange={(e) => updateConfig("neutronSymbol", e.target.value.toUpperCase())}
+                      className={`${inputClasses} font-mono`}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-[0.35em] text-[#FF6B6B]">
+                      Volatile Token
+                    </p>
+                    <Input
+                      placeholder="Token Name"
+                      value={config.protonName}
+                      onChange={(e) => updateConfig("protonName", e.target.value)}
+                      className={inputClasses}
+                    />
+                    <Input
+                      placeholder="SYMBOL"
+                      value={config.protonSymbol}
+                      onChange={(e) => updateConfig("protonSymbol", e.target.value.toUpperCase())}
+                      className={`${inputClasses} font-mono`}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                    Treasury (Fee Recipient)
+                  </Label>
+                  <Input
+                    placeholder="0x..."
+                    value={config.treasury}
+                    onChange={(e) => updateConfig("treasury", e.target.value)}
+                    className={`${inputClasses} font-mono`}
                   />
                 </div>
               </div>
 
-              {/* Peg Configuration */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold" style={{ letterSpacing: "0.02em" }}>
-                  Peg Target
-                </h3>
-                <div>
-                  <Label className="text-sm text-muted-foreground" style={{ letterSpacing: "0.02em" }}>
-                    What should your stable token track?
-                  </Label>
-                  <Select 
-                    value={config.pegAsset} 
-                    onValueChange={(value) => {
-                      const selectedFeed = Object.values(PriceFeedCategories)
-                        .flat()
-                        .find(feed => feed.symbol === value);
-                      if (selectedFeed) {
-                        updateConfig("pegAsset", value);
-                        updateConfig("priceId", selectedFeed.priceId);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PriceFeedCategories).map(([category, feeds]) => (
-                        <div key={category}>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                            {category}
-                          </div>
-                          {feeds.map((feed) => (
-                            <SelectItem key={feed.symbol} value={feed.symbol}>
-                              {feed.name} ({feed.symbol})
-                            </SelectItem>
-                          ))}
-                        </div>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                <ConnectButton.Custom>
+                  {({ account, chain, openConnectModal, openChainModal, mounted }) => {
+                    const ready = mounted
+                    const connected = ready && account && chain
 
-              {/* Token Configuration */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold" style={{ letterSpacing: "0.02em" }}>
-                  Token Names
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="text-sm text-muted-foreground flex items-center gap-2" style={{ letterSpacing: "0.02em" }}>
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      Stable Token
-                    </div>
-                    <div>
-                      <Input
-                        placeholder="Token Name"
-                        value={config.neutronName}
-                        onChange={(e) => updateConfig("neutronName", e.target.value)}
-                        className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target"
-                      />
-                    </div>
-                    <div>
-                      <Input
-                        placeholder="SYMBOL"
-                        value={config.neutronSymbol}
-                        onChange={(e) => updateConfig("neutronSymbol", e.target.value.toUpperCase())}
-                        className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target font-mono"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="text-sm text-muted-foreground flex items-center gap-2" style={{ letterSpacing: "0.02em" }}>
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      Volatile Token
-                    </div>
-                    <div>
-                      <Input
-                        placeholder="Token Name"
-                        value={config.protonName}
-                        onChange={(e) => updateConfig("protonName", e.target.value)}
-                        className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target"
-                      />
-                    </div>
-                    <div>
-                      <Input
-                        placeholder="SYMBOL"
-                        value={config.protonSymbol}
-                        onChange={(e) => updateConfig("protonSymbol", e.target.value.toUpperCase())}
-                        className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+                    if (!ready) {
+                      return (
+                        <Button
+                          size="lg"
+                          className="w-full h-14 rounded-none border border-white/60 bg-white text-black uppercase tracking-[0.3em] text-xs"
+                          disabled
+                        >
+                          <Wallet className="mr-2 h-5 w-5" />
+                          Loading Wallet
+                        </Button>
+                      )
+                    }
 
-              {/* Addresses */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold" style={{ letterSpacing: "0.02em" }}>
-                  Configuration
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground" style={{ letterSpacing: "0.02em" }}>
-                      Base Token (Collateral)
-                    </Label>
-                    <Input
-                      placeholder="0x..."
-                      value={config.baseToken}
-                      onChange={(e) => updateConfig("baseToken", e.target.value)}
-                      className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target font-mono"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-sm text-muted-foreground" style={{ letterSpacing: "0.02em" }}>
-                      Treasury (Fee Recipient)
-                    </Label>
-                    <Input
-                      placeholder="0x..."
-                      value={config.treasury}
-                      onChange={(e) => updateConfig("treasury", e.target.value)}
-                      className="h-12 bg-transparent border-2 border-white/20 focus:border-white/40 hover:border-white/30 transition-all duration-300 cursor-target font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+                    if (!connected) {
+                      return (
+                        <Button
+                          size="lg"
+                          className="w-full h-14 rounded-none border border-white/60 bg-white text-black hover:bg-[#C6FFDD] hover:text-[#050608] transition-colors duration-200 uppercase tracking-[0.3em] text-xs cursor-pointer"
+                          onClick={openConnectModal}
+                        >
+                          <Wallet className="mr-2 h-5 w-5" />
+                          Connect Wallet
+                        </Button>
+                      )
+                    }
 
-            {/* Deploy Section */}
-            <div className="border-t border-white/10 p-8">
-              <div className="space-y-4">
+                    if (chain?.unsupported) {
+                      return (
+                        <Button
+                          size="lg"
+                          className="w-full h-14 rounded-none border border-white/60 bg-white text-black hover:bg-[#C6FFDD] hover:text-[#050608] transition-colors duration-200 uppercase tracking-[0.3em] text-xs cursor-pointer"
+                          onClick={openChainModal}
+                        >
+                          Switch Network
+                        </Button>
+                      )
+                    }
 
-                {/* Deploy Button */}
-                <Button 
-                  size="lg" 
-                  className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg border-0 cursor-target" 
-                  onClick={handleDeploy}
-                  disabled={!isConnected || !isFormValid() || isDeploying || isConfirming}
-                  style={{ letterSpacing: "0.05em" }}
-                >
-                  {isDeploying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      Deploying...
-                    </>
-                  ) : isConfirming ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      Confirming...
-                    </>
-                    ) : !isConnected ? (
-                      <>
-                        <Wallet className="mr-2 h-5 w-5" />
-                        Connect Wallet
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-5 w-5" />
-                        Deploy Reactor
-                      </>
-                    )}
-                </Button>
+                    return (
+                      <Button
+                        size="lg"
+                        className="w-full h-14 rounded-none border border-white/60 bg-white text-black hover:bg-[#C6FFDD] hover:text-[#050608] transition-colors duration-200 uppercase tracking-[0.3em] text-xs cursor-pointer"
+                        onClick={handleDeploy}
+                        disabled={!isFormValid() || isDeploying || isConfirming}
+                      >
+                        {isDeploying ? (
+                          <>
+                            <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-black" />
+                            Deploying
+                          </>
+                        ) : isConfirming ? (
+                          <>
+                            <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-black" />
+                            Confirming
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="mr-2 h-5 w-5" />
+                            Deploy Reactor
+                          </>
+                        )}
+                      </Button>
+                    )
+                  }}
+                </ConnectButton.Custom>
 
-                {/* Success Message */}
                 {isSuccess && (
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                  <div className="border border-[#34D399]/40 bg-[#10221A] px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <CheckCircle className="h-5 w-5 text-[#34D399]" />
                       <div>
-                        <div className="font-semibold text-green-500">Reactor Deployed!</div>
-                        <div className="text-sm text-green-400 font-mono break-all">
+                        <div className="text-xs uppercase tracking-[0.3em] text-[#34D399]">
+                          Reactor Deployed
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-[#86EFAC] break-all">
                           {hash}
                         </div>
                       </div>

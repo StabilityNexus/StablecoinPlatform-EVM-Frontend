@@ -35,8 +35,8 @@ const TokenFlow = ({
   className = ""
 }: {
   title: string;
-  fromTokens: Array<'ERC-20' | 'Neutron' | 'Proton'>;
-  toTokens: Array<'ERC-20' | 'Neutron' | 'Proton'>;
+  fromTokens: Array<'Fungible' | 'Neutron' | 'Proton'>;
+  toTokens: Array<'Fungible' | 'Neutron' | 'Proton'>;
   reverse?: boolean;
   className?: string;
 }) => {
@@ -63,10 +63,10 @@ const TokenFlow = ({
     return () => clearTimeout(timer);
   }, [fromTokens.length, toTokens.length]);
 
-  const getTokenIcon = (token: 'ERC-20' | 'Neutron' | 'Proton') => {
+  const getTokenIcon = (token: 'Fungible' | 'Neutron' | 'Proton') => {
     const iconProps = { className: "w-full h-full" };
     switch (token) {
-      case 'ERC-20':
+      case 'Fungible':
         return <ErcIcon {...iconProps} />;
       case 'Neutron':
         return <StableCoinIcon {...iconProps} />;
