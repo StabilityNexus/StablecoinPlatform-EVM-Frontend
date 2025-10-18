@@ -7,6 +7,7 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  usePublicClient,
 } from "wagmi"
 import { parseUnits, formatUnits } from "viem"
 import { Button } from "@/components/ui/button"
@@ -33,6 +34,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 import LightRays from "@/components/LightRays"
 import Shuffle from "@/components/Shuffle"
 import { StableCoinReactorABI, ERC20ABI } from "@/utils/abi/StableCoin"
+import { PythABI } from "@/utils/abi/Pyth"
 import { toast } from "sonner"
 
 type TokenOption = "BASE" | "BUNDLE" | "NEUTRON" | "PROTON"
@@ -130,6 +132,8 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [hasSetDefaultRecipient, setHasSetDefaultRecipient] = useState(false)
+  const [oracleTip, setOracleTip] = useState("")
+  const [isFetchingOracleUpdate, setIsFetchingOracleUpdate] = useState(false)
 
   useEffect(() => {
     if (address && recipient === "" && !hasSetDefaultRecipient) {
@@ -149,6 +153,8 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     const key = `${fromToken}->${toToken}`
     return routeMap[key] || null
   }, [fromToken, toToken])
+
+  const publicClient = usePublicClient()
 
   if (!reactorAddress) {
     return (
@@ -247,6 +253,30 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
     functionName: "reserveRatioPeggedAsset",
+  })
+
+  const { data: neutronPriceBase } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "neutronPriceInBase",
+  })
+
+  const { data: protonPriceBase } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "protonPriceInBase",
+  })
+
+  const { data: neutronPricePegged } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "neutronPriceInPeggedAsset",
+  })
+
+  const { data: protonPricePegged } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "protonPriceInPeggedAsset",
   })
 
   const { data: targetReserveRatio } = useReadContract({
@@ -397,6 +427,17 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     },
   })
 
+  const baseDecimalsNumber = typeof baseDecimals === "number" ? baseDecimals : undefined
+  const neutronDecimalsNumber =
+    typeof neutronDecimals === "number" ? (neutronDecimals as number) : undefined
+  const protonDecimalsNumber =
+    typeof protonDecimals === "number" ? (protonDecimals as number) : undefined
+
+  const baseSymbolText = typeof baseSymbol === "string" ? baseSymbol : "BASE"
+  const neutronSymbolText = typeof neutronSymbol === "string" ? neutronSymbol : "NEUTRON"
+  const protonSymbolText = typeof protonSymbol === "string" ? protonSymbol : "PROTON"
+  const peggedSymbolText = "PEG"
+
   const { data: approveHash, writeContract: writeApprove, isPending: isApproving } = useWriteContract()
   const { data: fissionHash, writeContract: writeFission, isPending: isFissioning } = useWriteContract()
   const { data: fusionHash, writeContract: writeFusion, isPending: isFusing } = useWriteContract()
@@ -455,6 +496,9 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       void refetchNeutronToken()
       void refetchProtonToken()
       setAmount("")
+      if (isFissionSuccess) {
+        setOracleTip("")
+      }
     }
   }, [
     isApproveSuccess,
@@ -500,7 +544,11 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
 
   const routeRequiresApproval = route === "FISSION"
 
-  const parsedAmountForApproval = safeParseUnits(amount, baseDecimals)
+  const parsedAmountForApproval = useMemo(() => {
+    if (baseDecimalsNumber === undefined) return null
+    if (!amount) return null
+    return safeParseUnits(amount, baseDecimalsNumber)
+  }, [amount, baseDecimalsNumber])
   const needsApproval =
     routeRequiresApproval &&
     baseAllowance !== undefined &&
@@ -517,40 +565,45 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     isProtonToNeutronPending ||
     isProtonToNeutronTx ||
     isNeutronToProtonPending ||
-    isNeutronToProtonTx
+    isNeutronToProtonTx ||
+    isFetchingOracleUpdate
 
   const fromLabel = useMemo(() => {
     switch (fromToken) {
       case "BASE":
-        return baseSymbol || "Base"
+        return baseSymbolText
       case "NEUTRON":
-        return neutronSymbol || "Neutron"
+        return neutronSymbolText
       case "PROTON":
-        return protonSymbol || "Proton"
+        return protonSymbolText
       case "BUNDLE":
-        return `${neutronSymbol || "Neutron"} + ${protonSymbol || "Proton"}`
+        return `${neutronSymbolText} + ${protonSymbolText}`
       default:
         return "Token"
     }
-  }, [fromToken, baseSymbol, neutronSymbol, protonSymbol])
+  }, [fromToken, baseSymbolText, neutronSymbolText, protonSymbolText])
 
   const toLabel = useMemo(() => {
     switch (toToken) {
       case "BASE":
-        return baseSymbol || "Base"
+        return baseSymbolText
       case "NEUTRON":
-        return neutronSymbol || "Neutron"
+        return neutronSymbolText
       case "PROTON":
-        return protonSymbol || "Proton"
+        return protonSymbolText
       case "BUNDLE":
-        return `${neutronSymbol || "Neutron"} + ${protonSymbol || "Proton"}`
+        return `${neutronSymbolText} + ${protonSymbolText}`
       default:
         return "Token"
     }
-  }, [toToken, baseSymbol, neutronSymbol, protonSymbol])
+  }, [toToken, baseSymbolText, neutronSymbolText, protonSymbolText])
 
   const handleApprove = () => {
     if (!writeApprove || !baseToken) return
+    if (baseDecimalsNumber === undefined) {
+      toast.error("Base token decimals not available")
+      return
+    }
     const parsedAmount = parsedAmountForApproval
     if (parsedAmount === null) {
       toast.error("Invalid amount for approval")
@@ -561,7 +614,12 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
         address: baseToken as `0x${string}`,
         abi: ERC20ABI,
         functionName: "approve",
-        args: [reactorAddress as `0x${string}`, parsedAmount === BigInt(0) ? parseUnits("1000000", baseDecimals ?? 18) : parsedAmount],
+        args: [
+          reactorAddress as `0x${string}`,
+          parsedAmount === BigInt(0)
+            ? parseUnits("1000000", baseDecimalsNumber)
+            : parsedAmount,
+        ],
       })
     } catch (error) {
       console.error("Approve error:", error)
@@ -569,7 +627,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     }
   }
 
-  const handleSwap = () => {
+  const handleSwap = async () => {
     if (!route) {
       toast.error("Unsupported conversion path")
       return
@@ -588,26 +646,140 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     try {
       switch (route) {
         case "FISSION": {
-          const parsed = safeParseUnits(amount, baseDecimals)
+          if (!baseDecimalsNumber) {
+            toast.error("Base token decimals not available yet")
+            return
+          }
+          const parsed = safeParseUnits(amount, baseDecimalsNumber)
           if (parsed === null) {
             toast.error("Invalid base amount")
             return
           }
-          writeFission({
+
+          let tipValue = 0n
+          if (oracleTip.trim().length > 0) {
+            try {
+              tipValue = parseUnits(oracleTip.trim(), 18)
+            } catch (error) {
+              console.error("Invalid oracle tip:", error)
+              toast.error("Oracle tip must be a valid ETH amount")
+              return
+            }
+          }
+
+          let updateData: `0x${string}`[] = []
+
+          if (tipValue > 0n) {
+            if (!oracleAddress) {
+              toast.error("Oracle address unavailable for this reactor")
+              return
+            }
+            if (!reactorPriceId) {
+              toast.error("Price feed ID unavailable for this reactor")
+              return
+            }
+
+            setIsFetchingOracleUpdate(true)
+            try {
+              const response = await fetch("/api/hermes", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  priceId: reactorPriceId,
+                  oracleAddress,
+                }),
+              })
+
+              if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}))
+                const message = typeof errorBody.error === "string" ? errorBody.error : undefined
+                throw new Error(message ?? `Hermes proxy failed (${response.status})`)
+              }
+
+              const hermesPayload = (await response.json()) as { updateData?: string[] }
+              updateData = (hermesPayload.updateData ?? []).map(
+                (entry) => entry as `0x${string}`,
+              )
+
+              if (updateData.length === 0) {
+                throw new Error("Hermes proxy returned no update data")
+              }
+
+              if (publicClient) {
+                try {
+                  const requiredFee = await publicClient.readContract({
+                    address: oracleAddress as `0x${string}`,
+                    abi: PythABI,
+                    functionName: "getUpdateFee",
+                    args: [updateData],
+                  })
+
+                  if (tipValue < requiredFee) {
+                    toast.error("Oracle tip is below the required Pyth fee")
+                    return
+                  }
+                } catch (feeError) {
+                  console.error("Failed to estimate oracle fee:", feeError)
+                }
+              }
+            } catch (error) {
+              console.error("Failed to fetch oracle update data:", error)
+              toast.error(
+                error instanceof Error ? error.message : "Failed to fetch oracle update data",
+              )
+              return
+            } finally {
+              setIsFetchingOracleUpdate(false)
+            }
+          }
+
+          if (tipValue === 0n && publicClient) {
+            try {
+              await publicClient.simulateContract({
+                address: reactorAddress as `0x${string}`,
+                abi: StableCoinReactorABI,
+                functionName: "fission",
+                args: [parsed, recipient as `0x${string}`, []],
+                value: 0n,
+                account: address ? (address as `0x${string}`) : undefined,
+              })
+            } catch (simulationError) {
+              console.error("Fission simulation failed:", simulationError)
+              toast.error("Oracle price appears stale. Provide an oracle tip to refresh before splitting.")
+              return
+            }
+          }
+
+          console.debug("Submitting fission", {
+            vault: reactorAddress,
+            baseAmount: parsed.toString(),
+            recipient,
+            oracleTip: tipValue.toString(),
+            updateDataLength: updateData.length,
+          })
+
+          await writeFission({
             address: reactorAddress as `0x${string}`,
             abi: StableCoinReactorABI,
             functionName: "fission",
-            args: [parsed, recipient as `0x${string}`],
+            args: [parsed, recipient as `0x${string}`, updateData],
+            value: tipValue,
           })
           break
         }
         case "FUSION": {
-          const parsed = safeParseUnits(amount, baseDecimals)
+          if (!baseDecimalsNumber) {
+            toast.error("Base token decimals not available yet")
+            return
+          }
+          const parsed = safeParseUnits(amount, baseDecimalsNumber)
           if (parsed === null) {
             toast.error("Invalid base amount")
             return
           }
-          writeFusion({
+          await writeFusion({
             address: reactorAddress as `0x${string}`,
             abi: StableCoinReactorABI,
             functionName: "fusion",
@@ -616,12 +788,16 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
           break
         }
         case "PROTON_TO_NEUTRON": {
-          const parsed = safeParseUnits(amount, protonDecimals)
+          if (protonDecimalsNumber === undefined) {
+            toast.error("Proton token decimals not available")
+            return
+          }
+          const parsed = safeParseUnits(amount, protonDecimalsNumber)
           if (parsed === null) {
             toast.error("Invalid proton amount")
             return
           }
-          writeProtonToNeutron({
+          await writeProtonToNeutron({
             address: reactorAddress as `0x${string}`,
             abi: StableCoinReactorABI,
             functionName: "transmuteProtonToNeutron",
@@ -630,12 +806,16 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
           break
         }
         case "NEUTRON_TO_PROTON": {
-          const parsed = safeParseUnits(amount, neutronDecimals)
+          if (neutronDecimalsNumber === undefined) {
+            toast.error("Neutron token decimals not available")
+            return
+          }
+          const parsed = safeParseUnits(amount, neutronDecimalsNumber)
           if (parsed === null) {
             toast.error("Invalid neutron amount")
             return
           }
-          writeNeutronToProton({
+          await writeNeutronToProton({
             address: reactorAddress as `0x${string}`,
             abi: StableCoinReactorABI,
             functionName: "transmuteNeutronToProton",
@@ -662,18 +842,18 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const fromBalanceDisplay = useMemo(() => {
     switch (fromToken) {
       case "BASE":
-        return formatBalance(baseBalance, baseDecimals)
+        return formatBalance(baseBalance, baseDecimalsNumber)
       case "NEUTRON":
-        return formatBalance(neutronBalance, neutronDecimals as number | undefined)
+        return formatBalance(neutronBalance, neutronDecimalsNumber)
       case "PROTON":
-        return formatBalance(protonBalance, protonDecimals as number | undefined)
+        return formatBalance(protonBalance, protonDecimalsNumber)
       case "BUNDLE":
-        return `${neutronSymbol || "Neutron"}: ${formatBalance(
+        return `${neutronSymbolText}: ${formatBalance(
           neutronBalance,
-          neutronDecimals as number | undefined,
-        )} · ${protonSymbol || "Proton"}: ${formatBalance(
+          neutronDecimalsNumber,
+        )} · ${protonSymbolText}: ${formatBalance(
           protonBalance,
-          protonDecimals as number | undefined,
+          protonDecimalsNumber,
         )}`
       default:
         return "0"
@@ -683,9 +863,9 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     baseBalance,
     neutronBalance,
     protonBalance,
-    baseDecimals,
-    neutronDecimals,
-    protonDecimals,
+    baseDecimalsNumber,
+    neutronDecimalsNumber,
+    protonDecimalsNumber,
     neutronSymbol,
     protonSymbol,
   ])
@@ -693,21 +873,17 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const swapDescription = useMemo(() => {
     switch (route) {
       case "FISSION":
-        return `Convert ${baseSymbol || "base"} into ${neutronSymbol || "neutron"} + ${
-          protonSymbol || "proton"
-        }.`
+        return `Convert ${baseSymbolText} into ${neutronSymbolText} + ${protonSymbolText}.`
       case "FUSION":
-        return `Redeem ${neutronSymbol || "neutron"} + ${protonSymbol || "proton"} back into ${
-          baseSymbol || "base"
-        }.`
+        return `Redeem ${neutronSymbolText} + ${protonSymbolText} back into ${baseSymbolText}.`
       case "PROTON_TO_NEUTRON":
-        return `Transmute ${protonSymbol || "proton"} into ${neutronSymbol || "neutron"} using the β⁺ pathway.`
+        return `Transmute ${protonSymbolText} into ${neutronSymbolText} using the β⁺ pathway.`
       case "NEUTRON_TO_PROTON":
-        return `Transmute ${neutronSymbol || "neutron"} into ${protonSymbol || "proton"} using the β⁻ pathway.`
+        return `Transmute ${neutronSymbolText} into ${protonSymbolText} using the β⁻ pathway.`
       default:
         return "Select a supported conversion pair to continue."
     }
-  }, [route, baseSymbol, neutronSymbol, protonSymbol])
+  }, [route, baseSymbolText, neutronSymbolText, protonSymbolText])
 
   const actionLabel = useMemo(() => {
     switch (route) {
@@ -725,30 +901,20 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   }, [route])
 
   const handleMaxClick = () => {
-    if (fromToken === "BASE" && baseBalance && baseDecimals !== undefined) {
-      const formatted = formatUnits(baseBalance, baseDecimals)
+    if (fromToken === "BASE" && baseBalance && baseDecimalsNumber !== undefined) {
+      const formatted = formatUnits(baseBalance, baseDecimalsNumber)
       setAmount(trimFormattedAmount(formatted, 6))
-    } else if (fromToken === "NEUTRON" && neutronBalance && neutronDecimals !== undefined) {
-      const formatted = formatUnits(neutronBalance, neutronDecimals as number)
+    } else if (fromToken === "NEUTRON" && neutronBalance && neutronDecimalsNumber !== undefined) {
+      const formatted = formatUnits(neutronBalance, neutronDecimalsNumber)
       setAmount(trimFormattedAmount(formatted, 6))
-    } else if (fromToken === "PROTON" && protonBalance && protonDecimals !== undefined) {
-      const formatted = formatUnits(protonBalance, protonDecimals as number)
+    } else if (fromToken === "PROTON" && protonBalance && protonDecimalsNumber !== undefined) {
+      const formatted = formatUnits(protonBalance, protonDecimalsNumber)
       setAmount(trimFormattedAmount(formatted, 6))
     }
   }
 
   const renderMaxButton =
     fromToken === "BASE" || fromToken === "NEUTRON" || fromToken === "PROTON"
-
-  const baseDecimalsNumber = typeof baseDecimals === "number" ? baseDecimals : undefined
-  const neutronDecimalsNumber =
-    typeof neutronDecimals === "number" ? (neutronDecimals as number) : undefined
-  const protonDecimalsNumber =
-    typeof protonDecimals === "number" ? (protonDecimals as number) : undefined
-
-  const baseSymbolText = typeof baseSymbol === "string" ? baseSymbol : "BASE"
-  const neutronSymbolText = typeof neutronSymbol === "string" ? neutronSymbol : "NEUTRON"
-  const protonSymbolText = typeof protonSymbol === "string" ? protonSymbol : "PROTON"
 
   const baseAmountRaw = useMemo(() => {
     if (!baseDecimalsNumber) return null
@@ -1086,6 +1252,34 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       { label: "Reserve Ratio", value: reserveRatioText },
       { label: "Target Ratio", value: targetRatioText },
       { label: "Reserve Balance", value: reserveBalanceText },
+      {
+        label: `${neutronSymbolText}/Base`,
+        value:
+          neutronPriceBase !== undefined
+            ? `${formatWad(neutronPriceBase)} ${baseSymbolText}`
+            : "—",
+      },
+      {
+        label: `${protonSymbolText}/Base`,
+        value:
+          protonPriceBase !== undefined
+            ? `${formatWad(protonPriceBase)} ${baseSymbolText}`
+            : "—",
+      },
+      {
+        label: `${neutronSymbolText}/${peggedSymbolText}`,
+        value:
+          neutronPricePegged !== undefined
+            ? `${formatWad(neutronPricePegged)} ${peggedSymbolText}`
+            : "—",
+      },
+      {
+        label: `${protonSymbolText}/${peggedSymbolText}`,
+        value:
+          protonPricePegged !== undefined
+            ? `${formatWad(protonPricePegged)} ${peggedSymbolText}`
+            : "—",
+      },
       { label: `${neutronSymbolText} Supply`, value: neutronSupplyText },
       { label: `${protonSymbolText} Supply`, value: protonSupplyText },
     ],
@@ -1098,10 +1292,16 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       reserveRatioText,
       targetRatioText,
       reserveBalanceText,
-      neutronSupplyText,
-      protonSupplyText,
+      neutronPriceBase,
+      protonPriceBase,
+      neutronPricePegged,
+      protonPricePegged,
+      baseSymbolText,
+      peggedSymbolText,
       neutronSymbolText,
       protonSymbolText,
+      neutronSupplyText,
+      protonSupplyText,
     ],
   )
 
@@ -1203,6 +1403,26 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                   )}
                 </div>
               </div>
+
+              {isFissionRoute && (
+                <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>Oracle Update Tip (ETH)</span>
+                    <span className="text-[10px] text-muted-foreground/70">
+                      Optional — refresh Pyth price on-chain
+                    </span>
+                  </div>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    placeholder="0.00"
+                    value={oracleTip}
+                    onChange={(event) => setOracleTip(event.target.value)}
+                    className="font-mono text-sm bg-background/60"
+                  />
+                </div>
+              )}
 
               <div className="flex justify-center">
                 <Button
@@ -1390,7 +1610,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
             </CardContent>
           </Card>
         </div>
-        <div className="max-w-4xl mx-auto mt-10">
+        <div className="max-w-4xl mx-auto mt-40">
           <Card className="bg-background/50 border-white/15">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
