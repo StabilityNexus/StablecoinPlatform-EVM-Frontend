@@ -6,6 +6,7 @@ import Link from "next/link"
 import LightRays from "@/components/LightRays"
 import TargetCursor from "@/components/TargetCursor"
 import TokenFlow from "@/components/TokenFlow"
+import Particles from "@/components/Particles"
 import { HeroText } from "@/components/HeroText"
 import { motion } from "framer-motion"
 
@@ -58,13 +59,26 @@ export default function HomePage() {
 
       {/* How It Works Section */}
       <section className="relative min-h-screen flex items-center z-[5]">
-        <div className="container mx-auto px-4">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <Particles
+            particleColors={["#ffffff", "#d9e2ff"]}
+            particleCount={180}
+            particleSpread={12}
+            speed={0.08}
+            particleBaseSize={80}
+            moveParticlesOnHover
+            alphaParticles={false}
+            disableRotation={false}
+            className="pointer-events-none w-full h-full"
+          />
+        </div>
+        <div className="container mx-auto px-4 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <Card className="grid container py-8 p-8 grid-cols-1 gap-8 items-center lg:grid-cols-2 bg-black/50 backdrop-blur-md rounded-xl shadow-lg border border-white/10">
+            <Card className="grid container py-8 p-8 grid-cols-1 gap-8 items-center lg:grid-cols-2 bg-transparent backdrop-blur-0 rounded-xl shadow-lg border border-white/10">
               <motion.div
                 className="flex gap-10 flex-col"
                 initial={{ opacity: 0, x: -30 }}
@@ -77,7 +91,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3, duration: 0.3 }}
                   >
-                    <div className="inline-block bg-muted px-4 py-2 rounded-full text-sm font-medium mb-4">How It Works</div>
+                    <div className="inline-block bg-white/10 px-4 py-2 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/20">How It Works</div>
                   </motion.div>
                   <div className="flex gap-2 flex-col">
                     <motion.h2
@@ -109,7 +123,9 @@ export default function HomePage() {
                 <div className="grid lg:pl-6 grid-cols-1 items-start gap-6">
                   {[
                     { icon: "⚡", title: "Fission", description: "Splits Fungible-Tokens tokens into Proton stable tokens and Neutron volatile tokens" },
-                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into Fungible-Tokens tokens" }
+                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into Fungible-Tokens tokens" },
+                    { icon: "β⁺", title: "Transmute β⁺", description: "Convert Proton into Neutron while dynamically adjusting fees based on reserve balance" },
+                    { icon: "β⁻", title: "Transmute β⁻", description: "Convert Neutron into Proton with adaptive pricing driven by system health" },
                   ].map((item, index) => (
                     <motion.div
                       key={item.title}
@@ -131,7 +147,7 @@ export default function HomePage() {
                 </div>
               </motion.div>
               <motion.div
-                className="rounded-[2rem] h-full w-full p-4 flex flex-col items-center justify-center space-y-6"
+                className="rounded-[2rem] h-full w-full p-4 flex flex-col items-center justify-center space-y-4"
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
@@ -150,9 +166,36 @@ export default function HomePage() {
                   toTokens={['Fungible Token']}
                   reverse={false}
                 />
+
+                {/* Transmute β⁺: Proton -> Neutron */}
+                <TokenFlow
+                  title="Transmute β⁺"
+                  fromTokens={['Proton']}
+                  toTokens={['Neutron']}
+                />
+
+                {/* Transmute β⁻: Neutron -> Proton */}
+                <TokenFlow
+                  title="Transmute β⁻"
+                  fromTokens={['Neutron']}
+                  toTokens={['Proton']}
+                />
               </motion.div>
             </Card>
           </motion.div>
+        </div>
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <Particles
+            particleColors={["#ffffff", "#d9e2ff"]}
+            particleCount={180}
+            particleSpread={12}
+            speed={0.08}
+            particleBaseSize={80}
+            moveParticlesOnHover
+            alphaParticles={false}
+            disableRotation={false}
+            className="pointer-events-none w-full h-full"
+          />
         </div>
       </section>
 
@@ -168,7 +211,7 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {/* Price Stability */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
+            <Card className="p-8 cursor-target border-white/10">
               <CardContent className="p-0">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">

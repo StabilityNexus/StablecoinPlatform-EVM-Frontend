@@ -16,7 +16,7 @@ const Circle = forwardRef<
     <div
       ref={ref}
       className={cn(
-        "z-50 flex size-12 items-center justify-center rounded-full border bg-background relative",
+        "z-50 flex size-10 items-center justify-center rounded-full border bg-background relative",
         className,
       )}
     >
@@ -77,13 +77,13 @@ const TokenFlow = ({
 
   return (
     <motion.div
-      className={`w-full h-full flex flex-col items-center justify-center space-y-4 border rounded-2xl p-6 relative z-10 bg-black/50 backdrop-blur-md border-white/10 ${className}`}
+      className={`w-full h-full flex flex-col items-center justify-center space-y-3 border rounded-xl p-4 relative z-10 bg-black/5 border-white/20 ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      transition={{ duration: 1, ease: "easeOut" }}
     >
       <motion.p
-        className="text-center text-lg font-semibold relative z-10 text-white"
+        className="text-center text-base font-semibold relative z-10 text-white"
         initial={{ opacity: 0, y: 5 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.2 }}
@@ -92,10 +92,10 @@ const TokenFlow = ({
       </motion.p>
       <div
         ref={containerRef}
-        className="relative flex w-full h-32 items-center justify-between px-8"
+        className="relative flex w-full h-28 items-center justify-between px-6"
       >
         {/* From Tokens */}
-        <div className="flex flex-col items-center space-y-4 relative z-10">
+        <div className="flex flex-col items-center space-y-3 relative z-10">
           {fromTokens.map((token, index) => (
             <motion.div
               key={`from-${token}-${index}`}
@@ -113,7 +113,7 @@ const TokenFlow = ({
         </div>
 
         {/* To Tokens */}
-        <div className="flex flex-col items-center space-y-4 relative z-10">
+        <div className="flex flex-col items-center space-y-3 relative z-10">
           {toTokens.map((token, index) => (
             <motion.div
               key={`to-${token}-${index}`}
