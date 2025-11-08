@@ -3,11 +3,9 @@
 import React, { ReactNode, useEffect, useState } from 'react'
 import { config } from '@/utils/config'
 import {
-  getDefaultConfig,
   RainbowKitProvider,
   darkTheme,
   lightTheme,
-  Chain,
 } from '@rainbow-me/rainbowkit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'

@@ -1,19 +1,6 @@
 // src/utils/config.ts
-import {
-    arbitrum,
-    base,
-    baseSepolia,      // ← newly added
-    mainnet,
-    optimism,
-    polygon,
-    scrollSepolia,
-    sepolia,
-  } from 'wagmi/chains'
-  import {
-    getDefaultConfig,
-    RainbowKitProvider,
-    darkTheme,
-  } from '@rainbow-me/rainbowkit'
+import { scrollSepolia } from 'wagmi/chains'
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { citreaTestnet } from '@/components/CitreaTestnet'
 import { rootstockTestnet } from '@/components/RootstockTestnet'
 

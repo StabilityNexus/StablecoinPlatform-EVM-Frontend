@@ -754,6 +754,11 @@ export const StableCoinReactorABI = [
         "internalType": "address",
         "name": "to",
         "type": "address"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "updateData",
+        "type": "bytes[]"
       }
     ],
     "name": "transmuteProtonToNeutron",
@@ -769,7 +774,7 @@ export const StableCoinReactorABI = [
         "type": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -783,6 +788,11 @@ export const StableCoinReactorABI = [
         "internalType": "address",
         "name": "to",
         "type": "address"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "updateData",
+        "type": "bytes[]"
       }
     ],
     "name": "transmuteNeutronToProton",
@@ -798,7 +808,7 @@ export const StableCoinReactorABI = [
         "type": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   }
 ] as const
