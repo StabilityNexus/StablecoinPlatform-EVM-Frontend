@@ -16,15 +16,17 @@ import TargetCursor from "@/components/TargetCursor"
 
 interface ReactorConfig {
   vaultName: string
-  neutronName: string
-  neutronSymbol: string
+  baseAssetName: string
+  baseAssetSymbol: string
+  peggedAssetName: string
+  peggedAssetSymbol: string
   protonName: string  
   protonSymbol: string
   baseToken: string
   oracleAddress: string
   priceId: string
   treasury: string
-  targetReserveRatio: string
+  criticalReserveRatio: string
 }
 
 export default function CreatePage() {
@@ -32,15 +34,17 @@ export default function CreatePage() {
   const chainId = useChainId()
   const [config, setConfig] = useState<ReactorConfig>({
     vaultName: "",
-    neutronName: "",
-    neutronSymbol: "",
+    baseAssetName: "",
+    baseAssetSymbol: "",
+    peggedAssetName: "",
+    peggedAssetSymbol: "",
     protonName: "",
     protonSymbol: "",
     baseToken: "",
     oracleAddress: "",
     priceId: "",
     treasury: address || "",
-    targetReserveRatio: "400",
+    criticalReserveRatio: "400",
   })
 
   // Contract interaction
@@ -65,15 +69,17 @@ export default function CreatePage() {
 
   const isFormValid = () => {
     return config.vaultName &&
-           config.neutronName && 
-           config.neutronSymbol && 
+           config.baseAssetName &&
+           config.baseAssetSymbol &&
+           config.peggedAssetName && 
+           config.peggedAssetSymbol && 
            config.protonName && 
            config.protonSymbol && 
            config.baseToken && 
            config.oracleAddress &&
            config.treasury &&
            config.priceId &&
-           config.targetReserveRatio
+           config.criticalReserveRatio
   }
 
   const handleDeploy = async () => {
@@ -105,6 +111,42 @@ export default function CreatePage() {
       return
     }
 
+    const baseAssetName = config.baseAssetName.trim()
+    if (!baseAssetName) {
+      toast.error("Base asset name cannot be empty")
+      return
+    }
+
+    const baseAssetSymbol = config.baseAssetSymbol.trim()
+    if (!baseAssetSymbol) {
+      toast.error("Base asset symbol cannot be empty")
+      return
+    }
+
+    const peggedAssetName = config.peggedAssetName.trim()
+    if (!peggedAssetName) {
+      toast.error("Stable token name cannot be empty")
+      return
+    }
+
+    const peggedAssetSymbol = config.peggedAssetSymbol.trim()
+    if (!peggedAssetSymbol) {
+      toast.error("Stable token symbol cannot be empty")
+      return
+    }
+
+    const protonName = config.protonName.trim()
+    if (!protonName) {
+      toast.error("Proton token name cannot be empty")
+      return
+    }
+
+    const protonSymbol = config.protonSymbol.trim()
+    if (!protonSymbol) {
+      toast.error("Proton token symbol cannot be empty")
+      return
+    }
+
     const baseToken = config.baseToken.trim()
     if (!/^0x[0-9a-fA-F]{40}$/.test(baseToken)) {
       toast.error("Base token must be a 20-byte checksum address")
@@ -129,15 +171,15 @@ export default function CreatePage() {
       return
     }
 
-    const ratioValue = Number(config.targetReserveRatio)
+    const ratioValue = Number(config.criticalReserveRatio)
     if (Number.isNaN(ratioValue) || ratioValue < 100) {
-      toast.error("Target reserve ratio must be at least 100%")
+      toast.error("Critical reserve ratio must be at least 100%")
       return
     }
 
-    const targetReserveRatioWad = parseUnits((ratioValue / 100).toString(), 18)
-    if (targetReserveRatioWad < parseUnits("1", 18)) {
-      toast.error("Target reserve ratio must be at least 100%")
+    const criticalReserveRatioWad = parseUnits((ratioValue / 100).toString(), 18)
+    if (criticalReserveRatioWad < parseUnits("1", 18)) {
+      toast.error("Critical reserve ratio must be at least 100%")
       return
     }
 
@@ -151,17 +193,19 @@ export default function CreatePage() {
         functionName: 'deployReactor',
         args: [
           vaultName,
+          baseAssetName,
+          baseAssetSymbol,
+          peggedAssetName,
+          peggedAssetSymbol,
           baseToken as `0x${string}`,
           oracleAddress as `0x${string}`,
           trimmedPriceId as `0x${string}`,
-          config.neutronName,
-          config.neutronSymbol,
-          config.protonName,
-          config.protonSymbol,
+          protonName,
+          protonSymbol,
           treasuryAddress as `0x${string}`,
           BigInt(5000000000000000), // 0.5% fission fee (0.005e18)
           BigInt(5000000000000000), // 0.5% fusion fee (0.005e18)
-          targetReserveRatioWad
+          criticalReserveRatioWad
         ]
       })
     } catch (error) {
@@ -236,6 +280,31 @@ export default function CreatePage() {
                   />
                 </div>
 
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                      Base Asset Name
+                    </Label>
+                    <Input
+                      placeholder="Bitcoin Reserve"
+                      value={config.baseAssetName}
+                      onChange={(e) => updateConfig("baseAssetName", e.target.value)}
+                      className={inputClasses}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
+                      Base Asset Symbol
+                    </Label>
+                    <Input
+                      placeholder="BTC"
+                      value={config.baseAssetSymbol}
+                      onChange={(e) => updateConfig("baseAssetSymbol", e.target.value.toUpperCase())}
+                      className={`${inputClasses} font-mono`}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
                     Base Token (Collateral)
@@ -263,15 +332,15 @@ export default function CreatePage() {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-[11px] uppercase tracking-[0.4em] text-white/60">
-                      Target Reserve Ratio (%)
+                      Critical Reserve Ratio (%)
                     </Label>
                     <Input
                       type="number"
                       min={100}
                       step={1}
                       placeholder="400"
-                      value={config.targetReserveRatio}
-                      onChange={(e) => updateConfig("targetReserveRatio", e.target.value)}
+                      value={config.criticalReserveRatio}
+                      onChange={(e) => updateConfig("criticalReserveRatio", e.target.value)}
                       className={inputClasses}
                     />
                   </div>
@@ -295,14 +364,14 @@ export default function CreatePage() {
                     </p>
                     <Input
                       placeholder="Token Name"
-                      value={config.neutronName}
-                      onChange={(e) => updateConfig("neutronName", e.target.value)}
+                      value={config.peggedAssetName}
+                      onChange={(e) => updateConfig("peggedAssetName", e.target.value)}
                       className={inputClasses}
                     />
                     <Input
                       placeholder="SYMBOL"
-                      value={config.neutronSymbol}
-                      onChange={(e) => updateConfig("neutronSymbol", e.target.value.toUpperCase())}
+                      value={config.peggedAssetSymbol}
+                      onChange={(e) => updateConfig("peggedAssetSymbol", e.target.value.toUpperCase())}
                       className={`${inputClasses} font-mono`}
                     />
                   </div>

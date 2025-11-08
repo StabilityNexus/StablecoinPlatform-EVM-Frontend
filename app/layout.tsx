@@ -6,9 +6,14 @@ import { WalletProvider } from '@/providers/WalletProvider'
 import Navigation from '@/components/navigation'
 
 export const metadata: Metadata = {
-  title: 'Nucloin - Decentralized StableCoin Creation Platform',
+  title: 'Gluon - Decentralized StableCoin Creation Platform',
   description: 'A modern platform for Web3 hackathons with project submission and judging capabilities',
   generator: 'Next.js',
+  icons: {
+    icon: '/GluonProtocol-Darker.png',
+    shortcut: '/GluonProtocol-Darker.png',
+    apple: '/GluonProtocol-Darker.png',
+  },
 }
 
 export default function RootLayout({

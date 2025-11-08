@@ -13,7 +13,6 @@ import { parseUnits, formatUnits } from "viem"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
@@ -23,12 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  ArrowLeftRight,
-  Info,
-  Zap,
-  Shield,
   AlertTriangle,
+  ArrowLeftRight,
+  ChevronDown,
+  Copy,
+  Info,
+  Shield,
   Sparkles,
+  Zap,
 } from "lucide-react"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import LightRays from "@/components/LightRays"
@@ -82,6 +83,8 @@ const formatBalance = (balance?: bigint, decimals?: number, precision = 4) => {
   return trimFormattedAmount(formatted, precision)
 }
 
+const pow10 = (decimals: number) => BigInt(10) ** BigInt(decimals)
+
 const safeParseUnits = (value: string, decimals?: number) => {
   if (decimals === undefined) return null
   if (!value || Number(value) === 0) return BigInt(0)
@@ -93,16 +96,95 @@ const safeParseUnits = (value: string, decimals?: number) => {
   }
 }
 
-const shortAddress = (value?: string) => {
-  if (!value) return ""
-  return `${value.slice(0, 6)}...${value.slice(-4)}`
+const shortenAddress = (value?: string, guard = 4) => {
+  if (!value) return "—"
+  if (value.length <= guard * 2 + 3) return value
+  return `${value.slice(0, guard + 2)}…${value.slice(-guard)}`
 }
 
 const WAD = 10n ** 18n
+const PEGGED_ASSET_WAD = 10n ** 18n
+
+type PythPriceData = {
+  price: number
+  expo: number
+  conf: number
+  publishTime: number
+}
 
 const mulDiv = (a: bigint, b: bigint, denominator: bigint) => {
   if (denominator === 0n) return 0n
   return (a * b) / denominator
+}
+
+const scaleToWad = (value?: bigint, decimals?: number) => {
+  if (value === undefined || decimals === undefined) return undefined
+  if (decimals === 0) return value * WAD
+  const scale = pow10(decimals)
+  return scale === 0n ? undefined : mulDiv(value, WAD, scale)
+}
+
+const pythPriceToWad = (priceData: PythPriceData | null): bigint | undefined => {
+  if (!priceData) return undefined
+  const { price, expo } = priceData
+  if (price <= 0 || !Number.isFinite(price)) return undefined
+  const unsignedPrice = BigInt(Math.trunc(price))
+  if (unsignedPrice <= 0n) return undefined
+  if (expo >= 0) {
+    const scale = 10n ** BigInt(expo)
+    return unsignedPrice * scale * WAD
+  }
+  const scale = 10n ** BigInt(-expo)
+  return scale === 0n ? undefined : (unsignedPrice * WAD) / scale
+}
+
+const computeQWad = (
+  reserveWad?: bigint,
+  neutronSupplyWad?: bigint,
+  basePriceWad?: bigint,
+  criticalReserveRatio?: bigint,
+): bigint | undefined => {
+  if (
+    reserveWad === undefined ||
+    neutronSupplyWad === undefined ||
+    basePriceWad === undefined ||
+    basePriceWad === 0n
+  ) {
+    return undefined
+  }
+  if (neutronSupplyWad === 0n) return 0n
+
+  const pStarBaseWad = mulDiv(WAD, WAD, basePriceWad)
+  if (pStarBaseWad === 0n) return undefined
+
+  const denom = mulDiv(neutronSupplyWad, pStarBaseWad, WAD)
+  if (denom === 0n) return undefined
+
+  const rWad = mulDiv(reserveWad, WAD, denom)
+  const critical = criticalReserveRatio && criticalReserveRatio > 0n ? criticalReserveRatio : WAD
+  let rTilde = rWad
+  if (rWad <= critical) {
+    const diff = critical > WAD ? critical - WAD : 0n
+    const rOverStar = mulDiv(rWad, WAD, critical === 0n ? WAD : critical)
+    const part = mulDiv(rOverStar, diff, WAD)
+    rTilde = WAD + part
+  }
+  if (rTilde === 0n) return undefined
+  const q = mulDiv(WAD, WAD, rTilde)
+  return q > WAD ? WAD : q
+}
+
+type InfoRow = {
+  label: string
+  value: string
+  monospace?: boolean
+  emphasize?: boolean
+}
+
+type InfoSection = {
+  title: string
+  description?: string
+  items: InfoRow[]
 }
 
 const formatTokenValue = (
@@ -133,7 +215,12 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const [recipient, setRecipient] = useState("")
   const [hasSetDefaultRecipient, setHasSetDefaultRecipient] = useState(false)
   const [oracleTip, setOracleTip] = useState("")
+  const [isOracleTipExpanded, setIsOracleTipExpanded] = useState(false)
+  const [copiedValue, setCopiedValue] = useState<string | null>(null)
   const [isFetchingOracleUpdate, setIsFetchingOracleUpdate] = useState(false)
+  const [pythPrice, setPythPrice] = useState<PythPriceData | null>(null)
+  const [isLoadingPythPrice, setIsLoadingPythPrice] = useState(false)
+  const [pythPriceError, setPythPriceError] = useState<string | null>(null)
 
   useEffect(() => {
     if (address && recipient === "" && !hasSetDefaultRecipient) {
@@ -177,14 +264,80 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const { data: oracleAddress } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "pyth",
+    functionName: "PYTH_ORACLE",
   })
 
   const { data: reactorPriceId } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "priceId",
+    functionName: "PRICE_ID",
   })
+
+  useEffect(() => {
+    if (!reactorPriceId) {
+      setPythPrice(null)
+      setPythPriceError("Price feed unavailable for this reactor")
+      setIsLoadingPythPrice(false)
+      return
+    }
+
+    let isCancelled = false
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const fetchPrice = async () => {
+      setIsLoadingPythPrice(true)
+      try {
+        const response = await fetch("/api/pyth-price", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ priceId: reactorPriceId }),
+        })
+        const payload = (await response.json().catch(() => ({}))) as
+          | (PythPriceData & { error?: undefined })
+          | { error?: string }
+
+        if (!response.ok || !("price" in payload)) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : `Pyth price request failed (${response.status})`,
+          )
+        }
+
+        if (!isCancelled) {
+          setPythPrice({
+            price: payload.price,
+            expo: payload.expo,
+            conf: payload.conf,
+            publishTime: payload.publishTime,
+          })
+          setPythPriceError(null)
+        }
+      } catch (error) {
+        console.error("Failed to fetch Pyth price:", error)
+        if (!isCancelled) {
+          setPythPrice(null)
+          setPythPriceError(error instanceof Error ? error.message : "Failed to fetch price")
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingPythPrice(false)
+        }
+      }
+    }
+
+    fetchPrice()
+    intervalId = setInterval(fetchPrice, 15000)
+
+    return () => {
+      isCancelled = true
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [reactorPriceId])
 
   const {
     data: baseToken,
@@ -192,7 +345,31 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "base",
+    functionName: "BASE_TOKEN",
+  })
+
+  const { data: baseAssetNameContract } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "baseAssetName",
+  })
+
+  const { data: baseAssetSymbolContract } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "baseAssetSymbol",
+  })
+
+  const { data: peggedAssetNameContract } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "peggedAssetName",
+  })
+
+  const { data: peggedAssetSymbolContract } = useReadContract({
+    address: reactorAddress as `0x${string}`,
+    abi: StableCoinReactorABI,
+    functionName: "peggedAssetSymbol",
   })
 
   const {
@@ -201,7 +378,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "neutron",
+    functionName: "NEUTRON_TOKEN",
   })
 
   const {
@@ -210,13 +387,13 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "proton",
+    functionName: "PROTON_TOKEN",
   })
 
   const { data: treasury } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "treasury",
+    functionName: "TREASURY",
   })
 
   const {
@@ -225,7 +402,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "fissionFee",
+    functionName: "FISSION_FEE",
   })
 
   const {
@@ -234,7 +411,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "fusionFee",
+    functionName: "FUSION_FEE",
   })
 
   const {
@@ -246,46 +423,13 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     functionName: "reserve",
   })
 
-  const {
-    data: reserveRatio,
-    refetch: refetchReserveRatio,
-  } = useReadContract({
+  const { data: criticalReserveRatio } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "reserveRatioPeggedAsset",
+    functionName: "CRITICAL_RESERVE_RATIO",
   })
 
-  const { data: neutronPriceBase } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "neutronPriceInBase",
-  })
-
-  const { data: protonPriceBase } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "protonPriceInBase",
-  })
-
-  const { data: neutronPricePegged } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "neutronPriceInPeggedAsset",
-  })
-
-  const { data: protonPricePegged } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "protonPriceInPeggedAsset",
-  })
-
-  const { data: targetReserveRatio } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "targetReserveRatio",
-  })
-
-  const { data: basePricePegged, error: basePriceError } = useReadContract({
+  const { data: onChainBasePriceWad } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
     functionName: "getBasePriceInPeggedAsset",
@@ -294,34 +438,37 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     },
   })
 
-  const { data: isAboveTarget } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "isAboveTargetReserveRatio",
+  const {
+    data: neutronTotalSupply,
+    refetch: refetchNeutronTotalSupply,
+  } = useReadContract({
+    address: neutronToken as `0x${string}`,
+    abi: ERC20ABI,
+    functionName: "totalSupply",
+    query: {
+      enabled: !!neutronToken,
+    },
   })
 
   const {
-    data: neutronSupply,
-    refetch: refetchNeutronSupply,
+    data: protonTotalSupply,
+    refetch: refetchProtonTotalSupply,
   } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "neutronSupply",
-  })
-
-  const {
-    data: protonSupply,
-    refetch: refetchProtonSupply,
-  } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "protonSupply",
+    address: protonToken as `0x${string}`,
+    abi: ERC20ABI,
+    functionName: "totalSupply",
+    query: {
+      enabled: !!protonToken,
+    },
   })
 
   const { data: baseDecimals } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "baseDecimals",
+    address: baseToken as `0x${string}`,
+    abi: ERC20ABI,
+    functionName: "decimals",
+    query: {
+      enabled: !!baseToken,
+    },
   })
 
   const { data: neutronDecimals } = useReadContract({
@@ -340,18 +487,6 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     query: {
       enabled: !!protonToken,
     },
-  })
-
-  const { data: protonPriceInBase } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "protonPriceInBase",
-  })
-
-  const { data: neutronPriceInBase } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "neutronPriceInBase",
   })
 
   const { data: baseSymbol } = useReadContract({
@@ -433,10 +568,125 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const protonDecimalsNumber =
     typeof protonDecimals === "number" ? (protonDecimals as number) : undefined
 
-  const baseSymbolText = typeof baseSymbol === "string" ? baseSymbol : "BASE"
+  const reserveWad = useMemo(
+    () => scaleToWad(reserve, baseDecimalsNumber),
+    [reserve, baseDecimalsNumber],
+  )
+  const neutronSupplyWad = useMemo(
+    () => scaleToWad(neutronTotalSupply, neutronDecimalsNumber),
+    [neutronTotalSupply, neutronDecimalsNumber],
+  )
+  const protonSupplyWad = useMemo(
+    () => scaleToWad(protonTotalSupply, protonDecimalsNumber),
+    [protonTotalSupply, protonDecimalsNumber],
+  )
+  const basePriceWad = useMemo(() => {
+    const fromPyth = pythPrice ? pythPriceToWad(pythPrice) : undefined
+    if (fromPyth && fromPyth > 0n) return fromPyth
+    if (typeof onChainBasePriceWad === "bigint" && onChainBasePriceWad > 0n) {
+      return onChainBasePriceWad
+    }
+    return undefined
+  }, [pythPrice, onChainBasePriceWad])
+  const qWad = useMemo(
+    () => computeQWad(reserveWad, neutronSupplyWad, basePriceWad, criticalReserveRatio),
+    [reserveWad, neutronSupplyWad, basePriceWad, criticalReserveRatio],
+  )
+  const neutronPriceInBaseDerived = useMemo(() => {
+    if (!reserveWad || reserveWad === 0n) return 0n
+    if (!basePriceWad || basePriceWad === 0n) return undefined
+    if (neutronTotalSupply === undefined || neutronDecimalsNumber === undefined) return undefined
+    if (neutronTotalSupply === 0n) {
+      return mulDiv(PEGGED_ASSET_WAD, WAD, basePriceWad)
+    }
+    if (!neutronSupplyWad || neutronSupplyWad === 0n) return undefined
+    const q = qWad
+    if (q === undefined) return undefined
+    return mulDiv(q, reserveWad, neutronSupplyWad)
+  }, [reserveWad, neutronSupplyWad, basePriceWad, neutronTotalSupply, neutronDecimalsNumber, qWad])
+
+  const protonPriceInBaseDerived = useMemo(() => {
+    if (!reserveWad || !basePriceWad) return undefined
+    if (protonTotalSupply === undefined || protonDecimalsNumber === undefined) return undefined
+    if (protonTotalSupply === 0n) return WAD
+    if (!protonSupplyWad || protonSupplyWad === 0n) return undefined
+    const q = qWad
+    if (q === undefined) return undefined
+    const oneMinusQ = q >= WAD ? 0n : WAD - q
+    return mulDiv(oneMinusQ, reserveWad, protonSupplyWad)
+  }, [reserveWad, protonSupplyWad, protonTotalSupply, protonDecimalsNumber, qWad, basePriceWad])
+
+  const neutronPricePeggedDerived = useMemo(() => {
+    if (!basePriceWad || !neutronPriceInBaseDerived) return undefined
+    return mulDiv(neutronPriceInBaseDerived, basePriceWad, WAD)
+  }, [basePriceWad, neutronPriceInBaseDerived])
+
+  const protonPricePeggedDerived = useMemo(() => {
+    if (!basePriceWad || !protonPriceInBaseDerived) return undefined
+    return mulDiv(protonPriceInBaseDerived, basePriceWad, WAD)
+  }, [basePriceWad, protonPriceInBaseDerived])
+
+  const reserveRatioDerived = useMemo(() => {
+    if (!reserveWad) return undefined
+    if (!basePriceWad || basePriceWad === 0n) return undefined
+    if (!neutronSupplyWad) return undefined
+    if (reserveWad === 0n) return 0n
+    if (neutronSupplyWad === 0n) return undefined
+    const reserveValuePegged = mulDiv(reserveWad, basePriceWad, WAD)
+    if (reserveValuePegged === 0n) return 0n
+    return mulDiv(reserveValuePegged, WAD, neutronSupplyWad)
+  }, [reserveWad, basePriceWad, neutronSupplyWad])
+
+  const baseSymbolText =
+    typeof baseSymbol === "string" && baseSymbol.length > 0
+      ? baseSymbol
+      : typeof baseAssetSymbolContract === "string" && baseAssetSymbolContract.length > 0
+        ? baseAssetSymbolContract
+        : "BASE"
+  const baseAssetName =
+    typeof baseAssetNameContract === "string" && baseAssetNameContract.length > 0
+      ? baseAssetNameContract
+      : baseSymbolText || "Base Asset"
+  const peggedSymbolText =
+    typeof peggedAssetSymbolContract === "string" && peggedAssetSymbolContract.length > 0
+      ? peggedAssetSymbolContract
+      : "PEG"
+  const peggedAssetName =
+    typeof peggedAssetNameContract === "string" && peggedAssetNameContract.length > 0
+      ? peggedAssetNameContract
+      : peggedSymbolText
   const neutronSymbolText = typeof neutronSymbol === "string" ? neutronSymbol : "NEUTRON"
   const protonSymbolText = typeof protonSymbol === "string" ? protonSymbol : "PROTON"
-  const peggedSymbolText = "PEG"
+  const neutronPriceInBase = neutronPriceInBaseDerived
+  const protonPriceInBase = protonPriceInBaseDerived
+  const neutronPricePegged = neutronPricePeggedDerived
+  const protonPricePegged = protonPricePeggedDerived
+  const reserveRatio = reserveRatioDerived
+  const basePricePegged = basePriceWad
+  const baseAssetDisplay = `${baseAssetName} (${baseSymbolText})`
+  const peggedAssetDisplay = `${peggedAssetName} (${peggedSymbolText})`
+  const fissionFeeText = typeof fissionFee === "bigint" ? formatPercentFromWad(fissionFee) : "—"
+  const fusionFeeText = typeof fusionFee === "bigint" ? formatPercentFromWad(fusionFee) : "—"
+  const basePricePeggedText =
+    basePricePegged !== undefined
+      ? `${formatWad(basePricePegged)} ${peggedSymbolText}/${baseSymbolText}`
+      : isLoadingPythPrice
+        ? "Loading…"
+        : pythPriceError
+          ? "Oracle unavailable"
+          : "—"
+  const reserveRatioText = (() => {
+    if (reserve === undefined) return "—"
+    if (reserve === 0n) return "0%"
+    if (neutronTotalSupply !== undefined && neutronTotalSupply === 0n) {
+      return "∞ (bootstrap)"
+    }
+    if (reserveRatio === undefined) {
+      return isLoadingPythPrice ? "Loading…" : pythPriceError ? "Oracle unavailable" : "—"
+    }
+    return formatPercentFromWad(reserveRatio)
+  })()
+  const criticalRatioText = criticalReserveRatio ? formatPercentFromWad(criticalReserveRatio) : "—"
 
   const { data: approveHash, writeContract: writeApprove, isPending: isApproving } = useWriteContract()
   const { data: fissionHash, writeContract: writeFission, isPending: isFissioning } = useWriteContract()
@@ -487,9 +737,8 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       void refetchProtonBalance()
       void refetchBaseAllowance()
       void refetchReserve()
-      void refetchReserveRatio()
-      void refetchNeutronSupply()
-      void refetchProtonSupply()
+      void refetchNeutronTotalSupply()
+      void refetchProtonTotalSupply()
       void refetchFissionFee()
       void refetchFusionFee()
       void refetchBaseToken()
@@ -511,9 +760,8 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     refetchProtonBalance,
     refetchBaseAllowance,
     refetchReserve,
-    refetchReserveRatio,
-    refetchNeutronSupply,
-    refetchProtonSupply,
+    refetchNeutronTotalSupply,
+    refetchProtonTotalSupply,
     refetchFissionFee,
     refetchFusionFee,
     refetchBaseToken,
@@ -939,10 +1187,16 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const isFissionRoute = route === "FISSION"
   const isFusionRoute = route === "FUSION"
 
+  useEffect(() => {
+    if (!isFissionRoute) {
+      setIsOracleTipExpanded(false)
+    }
+  }, [isFissionRoute])
+
   const fissionBreakdown = useMemo(() => {
     if (!isFissionRoute) return null
     if (!baseAmountRaw || baseAmountRaw <= 0n) return null
-    if (fissionFee === undefined || targetReserveRatio === undefined || basePricePegged === undefined) {
+    if (fissionFee === undefined || reserve === undefined) {
       return null
     }
 
@@ -958,8 +1212,106 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       }
     }
 
-    const neutronOut = mulDiv(netBase, basePricePegged, targetReserveRatio)
-    const protonOut = netBase - mulDiv(netBase, WAD, targetReserveRatio)
+    if (
+      baseDecimalsNumber === undefined ||
+      neutronDecimalsNumber === undefined ||
+      protonDecimalsNumber === undefined
+    ) {
+      return {
+        baseIn: baseAmountRaw,
+        fee,
+        netBase,
+        neutronOut: 0n,
+        protonOut: 0n,
+      }
+    }
+
+    const baseScale = pow10(baseDecimalsNumber)
+    const netWad = mulDiv(netBase, WAD, baseScale)
+    const bootstrap =
+      reserve === 0n &&
+      (neutronTotalSupply === undefined || neutronTotalSupply === 0n) &&
+      (protonTotalSupply === undefined || protonTotalSupply === 0n)
+
+    if (bootstrap) {
+      if (basePricePegged === undefined) {
+        return {
+          baseIn: baseAmountRaw,
+          fee,
+          netBase,
+          neutronOut: 0n,
+          protonOut: 0n,
+        }
+      }
+
+      const depositValueWad = mulDiv(netWad, basePricePegged, WAD)
+      if (depositValueWad === 0n) {
+        return {
+          baseIn: baseAmountRaw,
+          fee,
+          netBase,
+          neutronOut: 0n,
+          protonOut: 0n,
+        }
+      }
+
+      const neutronValueWad = depositValueWad / 3n
+      if (neutronValueWad === 0n) {
+        return {
+          baseIn: baseAmountRaw,
+          fee,
+          netBase,
+          neutronOut: 0n,
+          protonOut: 0n,
+        }
+      }
+
+      const baseForNeutronWad = mulDiv(neutronValueWad, WAD, basePricePegged)
+      if (baseForNeutronWad === 0n || baseForNeutronWad >= netWad) {
+        return {
+          baseIn: baseAmountRaw,
+          fee,
+          netBase,
+          neutronOut: 0n,
+          protonOut: 0n,
+        }
+      }
+
+      const protonBaseWad = netWad - baseForNeutronWad
+      if (protonBaseWad === 0n) {
+        return {
+          baseIn: baseAmountRaw,
+          fee,
+          netBase,
+          neutronOut: 0n,
+          protonOut: 0n,
+        }
+      }
+
+      const neutronOut = mulDiv(neutronValueWad, pow10(neutronDecimalsNumber), WAD)
+      const protonOut = mulDiv(protonBaseWad, pow10(protonDecimalsNumber), WAD)
+
+      return {
+        baseIn: baseAmountRaw,
+        fee,
+        netBase,
+        neutronOut,
+        protonOut,
+        basePriceWad: basePricePegged,
+      }
+    }
+
+    if (!reserveWad || reserveWad === 0n || !neutronSupplyWad || !protonSupplyWad) {
+      return null
+    }
+
+    const neutronOutWad =
+      neutronSupplyWad === 0n ? 0n : mulDiv(netWad, neutronSupplyWad, reserveWad)
+    const protonOutWad =
+      protonSupplyWad === 0n ? 0n : mulDiv(netWad, protonSupplyWad, reserveWad)
+
+    const neutronOut = mulDiv(neutronOutWad, pow10(neutronDecimalsNumber), WAD)
+    const protonOut = mulDiv(protonOutWad, pow10(protonDecimalsNumber), WAD)
 
     return {
       baseIn: baseAmountRaw,
@@ -968,7 +1320,21 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       neutronOut,
       protonOut,
     }
-  }, [isFissionRoute, baseAmountRaw, fissionFee, targetReserveRatio, basePricePegged])
+  }, [
+    isFissionRoute,
+    baseAmountRaw,
+    fissionFee,
+    reserve,
+    baseDecimalsNumber,
+    neutronDecimalsNumber,
+    protonDecimalsNumber,
+    neutronTotalSupply,
+    protonTotalSupply,
+    basePricePegged,
+    reserveWad,
+    neutronSupplyWad,
+    protonSupplyWad,
+  ])
 
   const fusionBreakdown = useMemo(() => {
     if (!isFusionRoute) return null
@@ -976,9 +1342,12 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
     if (
       fusionFee === undefined ||
       reserve === undefined ||
-      neutronSupply === undefined ||
-      protonSupply === undefined ||
-      reserve === 0n
+      reserve === 0n ||
+      neutronTotalSupply === undefined ||
+      protonTotalSupply === undefined ||
+      baseDecimalsNumber === undefined ||
+      neutronDecimalsNumber === undefined ||
+      protonDecimalsNumber === undefined
     ) {
       return null
     }
@@ -988,8 +1357,20 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
 
     const grossBase = mulDiv(baseAmountRaw, WAD, denominator)
     const fee = grossBase - baseAmountRaw
-    const neutronBurn = mulDiv(grossBase, neutronSupply, reserve)
-    const protonBurn = mulDiv(grossBase, protonSupply, reserve)
+    const baseScale = pow10(baseDecimalsNumber)
+    const reserveWadValue = reserveWad
+    if (!reserveWadValue || reserveWadValue === 0n) return null
+    if (!neutronSupplyWad || !protonSupplyWad) return null
+
+    const grossBaseWad = mulDiv(grossBase, WAD, baseScale)
+
+    const neutronBurnWad =
+      neutronSupplyWad === 0n ? 0n : mulDiv(grossBaseWad, neutronSupplyWad, reserveWadValue)
+    const protonBurnWad =
+      protonSupplyWad === 0n ? 0n : mulDiv(grossBaseWad, protonSupplyWad, reserveWadValue)
+
+    const neutronBurn = mulDiv(neutronBurnWad, pow10(neutronDecimalsNumber), WAD)
+    const protonBurn = mulDiv(protonBurnWad, pow10(protonDecimalsNumber), WAD)
 
     return {
       requestedBaseOut: baseAmountRaw,
@@ -998,7 +1379,20 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       neutronBurn,
       protonBurn,
     }
-  }, [isFusionRoute, baseAmountRaw, fusionFee, reserve, neutronSupply, protonSupply])
+  }, [
+    isFusionRoute,
+    baseAmountRaw,
+    fusionFee,
+    reserve,
+    neutronTotalSupply,
+    protonTotalSupply,
+    baseDecimalsNumber,
+    neutronDecimalsNumber,
+    protonDecimalsNumber,
+    reserveWad,
+    neutronSupplyWad,
+    protonSupplyWad,
+  ])
 
   const fromBreakdownRows = useMemo(() => {
     if (isFusionRoute && fusionBreakdown) {
@@ -1056,7 +1450,12 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
           },
           {
             label: "Oracle price",
-            value: basePricePegged ? `${formatWad(basePricePegged)} Pegged/Base` : "—",
+            value: (() => {
+              const oraclePriceWad = fissionBreakdown.basePriceWad ?? basePricePegged
+              return oraclePriceWad
+                ? `${formatWad(oraclePriceWad)} ${peggedSymbolText}/${baseSymbolText}`
+                : "—"
+            })(),
           },
         ],
       }
@@ -1227,83 +1626,136 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
   const priceFeedIdText = typeof reactorPriceId === "string" ? reactorPriceId : undefined
   const baseTokenAddress = typeof baseToken === "string" ? baseToken : undefined
 
-  const reserveRatioText = reserveRatio ? formatPercentFromWad(reserveRatio) : "—"
-  const targetRatioText = targetReserveRatio ? formatPercentFromWad(targetReserveRatio) : "—"
   const reserveBalanceText =
     reserve && baseDecimalsNumber !== undefined
       ? `${formatBalance(reserve, baseDecimalsNumber)} ${baseSymbolText}`
       : "—"
   const neutronSupplyText =
-    neutronSupply && neutronDecimalsNumber !== undefined
-      ? formatBalance(neutronSupply, neutronDecimalsNumber)
+    neutronTotalSupply !== undefined && neutronDecimalsNumber !== undefined
+      ? formatBalance(neutronTotalSupply, neutronDecimalsNumber)
       : "—"
   const protonSupplyText =
-    protonSupply && protonDecimalsNumber !== undefined
-      ? formatBalance(protonSupply, protonDecimalsNumber)
+    protonTotalSupply !== undefined && protonDecimalsNumber !== undefined
+      ? formatBalance(protonTotalSupply, protonDecimalsNumber)
       : "—"
+  const neutronBasePriceText =
+    neutronPriceInBase !== undefined
+      ? `${formatWad(neutronPriceInBase)} ${baseSymbolText}`
+      : "—"
+  const protonBasePriceText =
+    protonPriceInBase !== undefined
+      ? `${formatWad(protonPriceInBase)} ${baseSymbolText}`
+      : "—"
+  const neutronPegPriceText =
+    neutronPricePegged !== undefined
+      ? `${formatWad(neutronPricePegged)} ${peggedSymbolText}`
+      : "—"
+  const protonPegPriceText =
+    protonPricePegged !== undefined
+      ? `${formatWad(protonPricePegged)} ${peggedSymbolText}`
+      : "—"
+  const bundleLabel = `${neutronSymbolText} + ${protonSymbolText}`
 
-  const infoRows = useMemo(
-    () => [
-      { label: "Vault Address", value: reactorAddress ?? "—", monospace: true },
-      { label: "Treasury", value: treasuryAddress ?? "—", monospace: true },
-      { label: "Oracle (Pyth)", value: oracleAddressText ?? "—", monospace: true },
-      { label: "Price Feed ID", value: priceFeedIdText ?? "—", monospace: true },
-      { label: "Base Token", value: baseTokenAddress ?? "—", monospace: true },
-      { label: "Reserve Ratio", value: reserveRatioText },
-      { label: "Target Ratio", value: targetRatioText },
-      { label: "Reserve Balance", value: reserveBalanceText },
-      {
-        label: `${neutronSymbolText}/Base`,
-        value:
-          neutronPriceBase !== undefined
-            ? `${formatWad(neutronPriceBase)} ${baseSymbolText}`
-            : "—",
-      },
-      {
-        label: `${protonSymbolText}/Base`,
-        value:
-          protonPriceBase !== undefined
-            ? `${formatWad(protonPriceBase)} ${baseSymbolText}`
-            : "—",
-      },
-      {
-        label: `${neutronSymbolText}/${peggedSymbolText}`,
-        value:
-          neutronPricePegged !== undefined
-            ? `${formatWad(neutronPricePegged)} ${peggedSymbolText}`
-            : "—",
-      },
-      {
-        label: `${protonSymbolText}/${peggedSymbolText}`,
-        value:
-          protonPricePegged !== undefined
-            ? `${formatWad(protonPricePegged)} ${peggedSymbolText}`
-            : "—",
-      },
-      { label: `${neutronSymbolText} Supply`, value: neutronSupplyText },
-      { label: `${protonSymbolText} Supply`, value: protonSupplyText },
-    ],
-    [
-      reactorAddress,
-      treasuryAddress,
-      oracleAddressText,
-      priceFeedIdText,
-      baseTokenAddress,
-      reserveRatioText,
-      targetRatioText,
-      reserveBalanceText,
-      neutronPriceBase,
-      protonPriceBase,
-      neutronPricePegged,
-      protonPricePegged,
-      baseSymbolText,
-      peggedSymbolText,
-      neutronSymbolText,
-      protonSymbolText,
-      neutronSupplyText,
-      protonSupplyText,
-    ],
-  )
+  const handleCopy = async (value?: string) => {
+    if (!value || value === "—") {
+      toast.error("Nothing to copy")
+      return
+    }
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      toast.error("Clipboard unavailable in this environment")
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedValue(value)
+      toast.success("Copied to clipboard")
+      setTimeout(() => {
+        setCopiedValue((current) => (current === value ? null : current))
+      }, 1800)
+    } catch (error) {
+      console.error("Copy failed:", error)
+      toast.error("Failed to copy value")
+    }
+  }
+
+  const infoSections = useMemo<InfoSection[]>(() => {
+    const sections: InfoSection[] = []
+
+    sections.push({
+      title: "Vault Posture",
+      description: "Core reserve state and fee policy for this reactor.",
+      items: [
+        { label: "Reserve Balance", value: reserveBalanceText, emphasize: true },
+        { label: "Reserve Ratio", value: reserveRatioText },
+        { label: "Critical Ratio", value: criticalRatioText },
+        { label: "Base/Peg Price", value: basePricePeggedText },
+        { label: "Fission Fee", value: fissionFeeText },
+        { label: "Fusion Fee", value: fusionFeeText },
+        { label: "Base Asset", value: baseAssetDisplay },
+        { label: "Pegged Asset", value: peggedAssetDisplay },
+      ],
+    })
+
+    sections.push({
+      title: "Program Addresses",
+      description: "Key accounts that control this vault.",
+      items: [
+        { label: "Vault Address", value: reactorAddress ?? "—", monospace: true },
+        { label: "Treasury", value: treasuryAddress ?? "—", monospace: true },
+        { label: "Oracle (Pyth)", value: oracleAddressText ?? "—", monospace: true },
+        { label: "Price Feed ID", value: priceFeedIdText ?? "—", monospace: true },
+        { label: "Base Token", value: baseTokenAddress ?? "—", monospace: true },
+      ],
+    })
+
+    sections.push({
+      title: `${neutronSymbolText} Metrics`,
+      description: "Stable asset supply and price snapshots.",
+      items: [
+        { label: "Supply", value: neutronSupplyText, emphasize: true },
+        { label: `${neutronSymbolText}/${baseSymbolText}`, value: neutronBasePriceText },
+        { label: `${neutronSymbolText}/${peggedSymbolText}`, value: neutronPegPriceText },
+      ],
+    })
+
+    sections.push({
+      title: `${protonSymbolText} Metrics`,
+      description: "Volatile asset issuance and pricing context.",
+      items: [
+        { label: "Supply", value: protonSupplyText, emphasize: true },
+        { label: `${protonSymbolText}/${baseSymbolText}`, value: protonBasePriceText },
+        { label: `${protonSymbolText}/${peggedSymbolText}`, value: protonPegPriceText },
+      ],
+    })
+
+    return sections
+  }, [
+    reactorAddress,
+    treasuryAddress,
+    oracleAddressText,
+    priceFeedIdText,
+    baseTokenAddress,
+    reserveBalanceText,
+    reserveRatioText,
+    criticalRatioText,
+    fissionFeeText,
+    fusionFeeText,
+    baseAssetDisplay,
+    peggedAssetDisplay,
+    basePricePeggedText,
+    neutronSupplyText,
+    protonSupplyText,
+    neutronBasePriceText,
+    protonBasePriceText,
+    neutronPegPriceText,
+    protonPegPriceText,
+    neutronSymbolText,
+    protonSymbolText,
+    baseSymbolText,
+    peggedSymbolText,
+  ])
+
+
 
 
   return (
@@ -1322,11 +1774,11 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
       />
 
       <div className="container mx-auto px-4 py-8 relative z-[5]">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 space-y-2">
           <Shuffle
             text={vaultHeading}
             tag="h1"
-            className="text-4xl lg:text-5xl mb-4 text-foreground"
+            className="text-4xl lg:text-5xl text-foreground"
             shuffleDirection="right"
             duration={0.35}
             animationMode="evenodd"
@@ -1335,45 +1787,45 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
             stagger={0.03}
             threshold={0.1}
             triggerOnce
-            triggerOnHover
             respectReducedMotion
           />
+          <p className="text-sm text-muted-foreground">
+            Manage flows between {baseAssetDisplay} and the {neutronSymbolText}/{protonSymbolText} bundle.
+          </p>
         </div>
 
         <div className="max-w-xl mx-auto">
-          <Card className="backdrop-blur-md bg-background/60 border-white/20 shadow-2xl">
+          <Card className="backdrop-blur-md bg-background/60 border-white/40 shadow-2xl rounded-none">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-semibold flex items-center gap-2">
+              <CardTitle className="text-2xl font-semibold flex items-center gap-2 text-foreground">
                 <Sparkles className="h-5 w-5 text-primary" />
-                  Swap Anywhere, Anytime
+                Swap Anywhere, Anytime
               </CardTitle>
+              <p className="text-sm text-muted-foreground">{swapDescription}</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="space-y-3 rounded-none border border-white/40 bg-white/5 p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/70">
                   <span>From</span>
-                  <span className="font-mono text-xs text-foreground/80">{fromBalanceDisplay}</span>
+                  <span className="font-mono text-xs text-white/80">{fromBalanceDisplay}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={fromToken}
-                    onValueChange={(value) => setFromToken(value as TokenOption)}
-                  >
-                    <SelectTrigger className="w-40 bg-background/80">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:h-14">
+                  <Select value={fromToken} onValueChange={(value) => setFromToken(value as TokenOption)}>
+                    <SelectTrigger className="h-12 sm:h-14 w-full sm:w-48 sm:flex-none bg-background/80">
                       <SelectValue placeholder="Token" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BASE" disabled={disabledTokens.BASE}>
-                        {baseSymbol || "Base"}
+                        {`${baseAssetName} (${baseSymbolText})`}
                       </SelectItem>
                       <SelectItem value="NEUTRON" disabled={disabledTokens.NEUTRON}>
-                        {neutronSymbol || "Neutron"}
+                        {neutronSymbolText}
                       </SelectItem>
                       <SelectItem value="PROTON" disabled={disabledTokens.PROTON}>
-                        {protonSymbol || "Proton"}
+                        {protonSymbolText}
                       </SelectItem>
                       <SelectItem value="BUNDLE" disabled={disabledTokens.BUNDLE}>
-                        {(neutronSymbol || "Neutron") + " + " + (protonSymbol || "Proton")}
+                        {`${neutronSymbolText} + ${protonSymbolText}`}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -1387,7 +1839,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                       setAmount(event.target.value)
                     }}
                     readOnly={fromInputReadOnly}
-                    className="flex-1 text-2xl font-semibold h-14 bg-background/60"
+                    className="w-full sm:flex-1 sm:min-w-0 text-xl sm:text-2xl font-semibold h-12 sm:h-14 bg-background/60"
                   />
 
                   {renderMaxButton && (
@@ -1395,7 +1847,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-white/20 hover:bg-white/10"
+                      className="w-full sm:w-auto h-12 sm:h-14 border-white/40 hover:bg-white/10"
                       onClick={handleMaxClick}
                     >
                       Max
@@ -1405,22 +1857,38 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
               </div>
 
               {isFissionRoute && (
-                <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    <span>Oracle Update Tip (ETH)</span>
-                    <span className="text-[10px] text-muted-foreground/70">
-                      Optional — refresh Pyth price on-chain
+                <div className="rounded-none border border-dashed border-white/30 bg-white/5 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsOracleTipExpanded((prev) => !prev)}
+                    className="flex w-full items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground"
+                  >
+                    <span className="flex items-center gap-2 text-foreground">
+                      <Zap className="h-4 w-4 text-primary" />
+                      Oracle Tip
                     </span>
-                  </div>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    placeholder="0.00"
-                    value={oracleTip}
-                    onChange={(event) => setOracleTip(event.target.value)}
-                    className="font-mono text-sm bg-background/60"
-                  />
+                    <ChevronDown
+                      className={`h-4 w-4 text-foreground transition-transform ${
+                        isOracleTipExpanded ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {isOracleTipExpanded && (
+                    <div className="mt-3 space-y-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        placeholder="0.00"
+                        value={oracleTip}
+                        onChange={(event) => setOracleTip(event.target.value)}
+                        className="font-mono text-sm bg-background/60"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Provide an ETH tip to push a fresh Pyth price update before splitting.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1428,7 +1896,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="rounded-full h-10 w-10 p-0 bg-white/10 hover:bg-white/20"
+                  className="rounded-none h-12 w-12 p-0 bg-white/10 hover:bg-white/20"
                   onClick={() => {
                     const newFrom = toToken
                     const newTo = allowedTargets[newFrom][0]
@@ -1440,8 +1908,8 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                 </Button>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="space-y-3 rounded-none border border-white/40 bg-white/5 p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/70">
                   <span>To</span>
                   <div className="flex items-center gap-2">
                     {breakdownPopover && (
@@ -1449,7 +1917,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                         <PopoverTrigger asChild>
                           <button
                             type="button"
-                            className="rounded-full border border-white/20 p-1 text-foreground/70 transition-colors hover:border-white/40 hover:text-foreground"
+                            className="rounded-none border border-white/40 p-1 text-foreground/70 transition-colors hover:border-white/40 hover:text-foreground"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -1470,24 +1938,21 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                     <span className="font-mono text-xs text-foreground/80">{toLabel}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={toToken}
-                    onValueChange={(value) => setToToken(value as TokenOption)}
-                  >
-                    <SelectTrigger className="bg-background/80">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:h-14">
+                  <Select value={toToken} onValueChange={(value) => setToToken(value as TokenOption)}>
+                    <SelectTrigger className="h-12 sm:h-14 sm:w-52 sm:flex-none bg-background/80">
                       <SelectValue placeholder="Token" />
                     </SelectTrigger>
                     <SelectContent>
                       {allowedTargets[fromToken].map((target) => (
                         <SelectItem key={target} value={target}>
                           {target === "BUNDLE"
-                            ? `${neutronSymbol || "Neutron"} + ${protonSymbol || "Proton"}`
+                            ? bundleLabel
                             : target === "BASE"
-                              ? baseSymbol || "Base"
+                              ? baseSymbolText
                               : target === "NEUTRON"
-                                ? neutronSymbol || "Neutron"
-                                : protonSymbol || "Proton"}
+                                ? neutronSymbolText
+                                : protonSymbolText}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1503,7 +1968,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                       }
                     }}
                     readOnly={toInputReadOnly}
-                    className="flex-1 text-2xl font-semibold h-14 bg-background/60"
+                    className="w-full sm:flex-1 sm:min-w-0 text-xl sm:text-2xl font-semibold h-12 sm:h-14 bg-background/60"
                   />
                 </div>
               </div>
@@ -1527,11 +1992,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                     <div
                       {...(!ready && {
                         "aria-hidden": true,
-                        style: {
-                          opacity: 0,
-                          pointerEvents: "none",
-                          userSelect: "none",
-                        },
+                        style: { opacity: 0, pointerEvents: "none", userSelect: "none" },
                       })}
                     >
                       {(() => {
@@ -1539,7 +2000,7 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                           return (
                             <Button
                               onClick={openConnectModal}
-                              className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg border-0"
+                              className="w-full h-14 bg-[#E8BA10] hover:bg-[#d0a60e] text-black font-semibold text-lg border-0"
                             >
                               <Zap className="mr-2 h-5 w-5" />
                               Connect Wallet
@@ -1568,17 +2029,17 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                             <Button
                               onClick={handleApprove}
                               disabled={isProcessing}
-                              className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg border-0"
+                              className="w-full h-14 bg-[#E8BA10] hover:bg-[#d0a60e] text-black font-semibold text-lg border-0"
                             >
                               {isApproving || isApprovingTx ? (
                                 <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                  Approving...
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+                                  Approving…
                                 </>
                               ) : (
                                 <>
                                   <Shield className="mr-2 h-5 w-5" />
-                                  Approve {baseSymbol || "Base"}
+                                  Approve {baseSymbolText}
                                 </>
                               )}
                             </Button>
@@ -1589,12 +2050,12 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                           <Button
                             onClick={handleSwap}
                             disabled={isProcessing}
-                            className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg border-0"
+                            className="w-full h-14 bg-[#E8BA10] hover:bg-[#d0a60e] text-black font-semibold text-lg border-0 disabled:opacity-60"
                           >
                             {isProcessing ? (
                               <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                Processing...
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+                                Processing…
                               </>
                             ) : (
                               actionLabel
@@ -1606,40 +2067,88 @@ export default function InteractionClient({ coinId }: { coinId: string }) {
                   )
                 }}
               </ConnectButton.Custom>
+            </CardContent>
+          </Card>
+        </div>
 
-            </CardContent>
-          </Card>
-        </div>
-        <div className="max-w-4xl mx-auto mt-40">
-          <Card className="bg-background/50 border-white/15">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
-                Reactor Parameters
-              </CardTitle>
-              <p className="text-xs text-muted-foreground/80">
-                Live configuration and treasury wiring for this vault.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {infoRows.map((row) => (
-                  <div key={row.label} className="space-y-1">
-                    <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      {row.label}
-                    </dt>
-                    <dd
-                      className={`font-mono text-sm text-foreground ${
-                        row.monospace ? "break-all" : ""
-                      }`}
-                    >
-                      {row.value}
-                    </dd>
-                  </div>
+        {infoSections.length > 0 && (
+          <div className="max-w-4xl mx-auto mt-16 sm:mt-24 lg:mt-40">
+            <Card
+              className="bg-background/50 border-white/40"
+              style={{
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              }}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold text-foreground">Reactor Parameters</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Live configuration, oracle wiring, and treasury context for this vault.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {infoSections.map((section) => (
+                  <section
+                    key={section.title}
+                    className="rounded-xl border border-white/20 bg-white/5 px-5 py-6 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-col gap-1 border-b border-white/10 pb-4">
+                      <h3 className="text-sm font-semibold tracking-wide text-foreground">{section.title}</h3>
+                      {section.description ? (
+                        <p className="text-xs text-muted-foreground/80">{section.description}</p>
+                      ) : null}
+                    </div>
+                    <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                      {section.items.map((row) => {
+                        const isCopyable = row.monospace && row.value !== "—"
+                        const emphasisClasses = row.emphasize
+                          ? "text-lg font-semibold tracking-tight"
+                          : "text-sm"
+
+                        return (
+                          <div key={`${section.title}-${row.label}`} className="rounded-lg bg-white/[0.03] px-3 py-3">
+                            <dt className="text-xs uppercase tracking-wide text-muted-foreground">{row.label}</dt>
+                            <dd
+                              className={`mt-1 text-foreground ${emphasisClasses} ${
+                                isCopyable ? "flex items-center gap-2" : ""
+                              }`}
+                            >
+                              {isCopyable ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full border border-white/20 bg-white/5"
+                                    onClick={() => void handleCopy(row.value)}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                    <span className="sr-only">Copy {row.label}</span>
+                                  </Button>
+                                  <div className="flex flex-col">
+                                    <span className="font-mono text-xs sm:text-sm">
+                                      {shortenAddress(row.value)}
+                                    </span>
+                                    {copiedValue === row.value ? (
+                                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        Copied
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </>
+                              ) : (
+                                row.value
+                              )}
+                            </dd>
+                          </div>
+                        )
+                      })}
+                    </dl>
+                  </section>
                 ))}
-              </dl>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )
