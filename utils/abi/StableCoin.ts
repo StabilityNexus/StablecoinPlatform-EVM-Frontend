@@ -3,62 +3,72 @@ export const StableCoinReactorABI = [
     "inputs": [
       {
         "internalType": "string",
-        "name": "_vaultName",
+        "name": "vaultNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "baseAssetNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "baseAssetSymbolParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "peggedAssetNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "peggedAssetSymbolParam",
         "type": "string"
       },
       {
         "internalType": "address",
-        "name": "_base",
+        "name": "baseTokenParam",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_pyth",
+        "name": "pythOracleParam",
         "type": "address"
       },
       {
         "internalType": "bytes32",
-        "name": "_basePriceId",
+        "name": "priceIdParam",
         "type": "bytes32"
       },
       {
         "internalType": "string",
-        "name": "_neutronName",
+        "name": "protonNameParam",
         "type": "string"
       },
       {
         "internalType": "string",
-        "name": "_neutronSymbol",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_protonName",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_protonSymbol",
+        "name": "protonSymbolParam",
         "type": "string"
       },
       {
         "internalType": "address",
-        "name": "_treasury",
+        "name": "treasuryParam",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_fissionFee",
+        "name": "fissionFeeParam",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_fusionFee",
+        "name": "fusionFeeParam",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_targetReserveRatioWAD",
+        "name": "criticalReserveRatioWadParam",
         "type": "uint256"
       }
     ],
@@ -69,6 +79,31 @@ export const StableCoinReactorABI = [
     "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
     "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "phi0",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "phi1",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "decayPerSecondWad",
+        "type": "uint256"
+      }
+    ],
+    "name": "BetaParamsSet",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -185,31 +220,6 @@ export const StableCoinReactorABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "phi0",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "phi1",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "decayPerSecondWAD",
-        "type": "uint256"
-      }
-    ],
-    "name": "BetaParamsSet",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
         "name": "from",
@@ -294,12 +304,142 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "PEG_PeggedAsset_WAD",
+    "name": "BASE_TOKEN",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "CRITICAL_RESERVE_RATIO",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FISSION_FEE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FUSION_FEE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAXIMUM_AGE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "NEUTRON_TOKEN",
+    "outputs": [
+      {
+        "internalType": "contract Tokeon",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PEGGED_ASSET_WAD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PRICE_ID",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PROTON_TOKEN",
+    "outputs": [
+      {
+        "internalType": "contract Tokeon",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PYTH_ORACLE",
+    "outputs": [
+      {
+        "internalType": "contract IPyth",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "TREASURY",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -320,12 +460,12 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "base",
+    "name": "baseAssetName",
     "outputs": [
       {
-        "internalType": "contract IERC20",
+        "internalType": "string",
         "name": "",
-        "type": "address"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -333,12 +473,12 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "baseDecimals",
+    "name": "baseAssetSymbol",
     "outputs": [
       {
-        "internalType": "uint8",
+        "internalType": "string",
         "name": "",
-        "type": "uint8"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -372,46 +512,7 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "decayPerSecondWAD",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes[]",
-        "name": "updateData",
-        "type": "bytes[]"
-      }
-    ],
-    "name": "updatePriceFeeds",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "fissionFee",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "fusionFee",
+    "name": "decayPerSecondWad",
     "outputs": [
       {
         "internalType": "uint256",
@@ -430,32 +531,6 @@ export const StableCoinReactorABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isAboveTargetReserveRatio",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "neutron",
-    "outputs": [
-      {
-        "internalType": "contract Tokeon",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -489,12 +564,12 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "neutronSupply",
+    "name": "peggedAssetName",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "string",
         "name": "",
-        "type": "uint256"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -502,25 +577,12 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "priceId",
+    "name": "peggedAssetSymbol",
     "outputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "string",
         "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "proton",
-    "outputs": [
-      {
-        "internalType": "contract Tokeon",
-        "name": "",
-        "type": "address"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -554,33 +616,7 @@ export const StableCoinReactorABI = [
   },
   {
     "inputs": [],
-    "name": "protonSupply",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "pyth",
-    "outputs": [
-      {
-        "internalType": "contract IPyth",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "qWAD",
+    "name": "qWad",
     "outputs": [
       {
         "internalType": "uint256",
@@ -618,20 +654,33 @@ export const StableCoinReactorABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "vaultName",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_phi0",
+        "name": "phi0",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_phi1",
+        "name": "phi1",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_decayPerSecondWAD",
+        "name": "decayPerSecondWadParam",
         "type": "uint256"
       }
     ],
@@ -641,16 +690,57 @@ export const StableCoinReactorABI = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "targetReserveRatio",
-    "outputs": [
+    "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "bytes[]",
+        "name": "updateData",
+        "type": "bytes[]"
       }
     ],
-    "stateMutability": "view",
+    "name": "updatePriceFeeds",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amountIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "updateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "fission",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "m",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "fusion",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -709,73 +799,6 @@ export const StableCoinReactorABI = [
       }
     ],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "treasury",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "m",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes[]",
-        "name": "updateData",
-        "type": "bytes[]"
-      }
-    ],
-    "name": "fission",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "m",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      }
-    ],
-    "name": "fusion",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "vaultName",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   }
 ] as const

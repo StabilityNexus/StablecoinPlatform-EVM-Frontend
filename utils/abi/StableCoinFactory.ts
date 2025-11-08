@@ -75,13 +75,25 @@ export const StableCoinFactoryABI = [
       {
         "indexed": false,
         "internalType": "string",
-        "name": "neutronName",
+        "name": "baseAssetName",
         "type": "string"
       },
       {
         "indexed": false,
         "internalType": "string",
-        "name": "neutronSymbol",
+        "name": "baseAssetSymbol",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "peggedAssetName",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "peggedAssetSymbol",
         "type": "string"
       },
       {
@@ -111,7 +123,7 @@ export const StableCoinFactoryABI = [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "targetReserveRatioWAD",
+        "name": "criticalReserveRatioWad",
         "type": "uint256"
       }
     ],
@@ -166,62 +178,72 @@ export const StableCoinFactoryABI = [
     "inputs": [
       {
         "internalType": "string",
-        "name": "_vaultName",
+        "name": "vaultNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "baseAssetNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "baseAssetSymbolParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "peggedAssetNameParam",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "peggedAssetSymbolParam",
         "type": "string"
       },
       {
         "internalType": "address",
-        "name": "_base",
+        "name": "baseTokenParam",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_pyth",
+        "name": "pythOracleParam",
         "type": "address"
       },
       {
         "internalType": "bytes32",
-        "name": "_basePriceId",
+        "name": "priceIdParam",
         "type": "bytes32"
       },
       {
         "internalType": "string",
-        "name": "_neutronName",
+        "name": "protonNameParam",
         "type": "string"
       },
       {
         "internalType": "string",
-        "name": "_neutronSymbol",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_protonName",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_protonSymbol",
+        "name": "protonSymbolParam",
         "type": "string"
       },
       {
         "internalType": "address",
-        "name": "_treasury",
+        "name": "treasuryParam",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_fissionFee",
+        "name": "fissionFeeParam",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_fusionFee",
+        "name": "fusionFeeParam",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_targetReserveRatioWAD",
+        "name": "criticalReserveRatioWadParam",
         "type": "uint256"
       }
     ],
@@ -279,12 +301,12 @@ export const StableCoinFactoryABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_base",
+        "name": "baseToken",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_index",
+        "name": "index",
         "type": "uint256"
       }
     ],
