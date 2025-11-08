@@ -26,13 +26,13 @@ function SimpleReactorCard({ address }: { address: string }) {
   const { data: neutronAddress } = useReadContract({
     address: address as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: 'neutron',
+    functionName: 'NEUTRON_TOKEN',
   })
 
   const { data: protonAddress } = useReadContract({
     address: address as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: 'proton',
+    functionName: 'PROTON_TOKEN',
   })
 
   // Get neutron token details

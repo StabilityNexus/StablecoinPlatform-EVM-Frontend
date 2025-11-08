@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
+import Image from "next/image"
 import LightRays from "@/components/LightRays"
 import TargetCursor from "@/components/TargetCursor"
 import TokenFlow from "@/components/TokenFlow"
@@ -46,10 +47,10 @@ export default function HomePage() {
               build trust in the decentralized economy.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 cursor-target">
+              <Button asChild size="lg" className="text-lg px-8 cursor-target rounded-none">
                 <Link href="/create">Create Stablecoin</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 bg-transparent cursor-target">
+              <Button asChild variant="outline" size="lg" className="text-lg px-8 bg-transparent cursor-target rounded-none">
                 <Link href="/explorer">Explore Coins</Link>
               </Button>
             </div>
@@ -78,7 +79,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <Card className="grid container py-8 p-8 grid-cols-1 gap-8 items-center lg:grid-cols-2 bg-transparent backdrop-blur-0 rounded-xl shadow-lg border border-white/10">
+            <Card className="grid container py-8 p-8 grid-cols-1 gap-8 items-center lg:grid-cols-2 bg-transparent backdrop-blur-0 rounded-none shadow-lg border border-white/40">
               <motion.div
                 className="flex gap-10 flex-col"
                 initial={{ opacity: 0, x: -30 }}
@@ -91,7 +92,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3, duration: 0.3 }}
                   >
-                    <div className="inline-block bg-white/10 px-4 py-2 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/20">How It Works</div>
+                    <div className="inline-block bg-white/10 px-4 py-2 rounded-none text-sm font-medium mb-4 backdrop-blur-sm border border-white/40">How It Works</div>
                   </motion.div>
                   <div className="flex gap-2 flex-col">
                     <motion.h2
@@ -108,22 +109,22 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5, duration: 0.5 }}
                     >
-                      Get exposure to stability with Proton.
+                      Get exposure to stability with Stable Token(Neutron).
                       <br />
-                      Proton is the stablecoin pegged to price of 1 backed token.
+                      Neutron is the stablecoin pegged to price of 1 backed token.
                       <br /><br />
-                      Get leveraged volatility and yield with Neutron.
+                      Get leveraged volatility and yield with leverage yield token(Proton).
                       <br />
-                      Neutron tokenizes the reserve surplus.
+                      Proton tokenizes the reserve surplus.
                       <br /><br />
-                      Both Proton and Neutron are fully backed by Fungible-Tokens tokens.
+                      Both Proton and Neutron are fully backed by Base tokens.
                     </motion.p>
                   </div>
                 </div>
                 <div className="grid lg:pl-6 grid-cols-1 items-start gap-6">
                   {[
-                    { icon: "⚡", title: "Fission", description: "Splits Fungible-Tokens tokens into Proton stable tokens and Neutron volatile tokens" },
-                    { icon: "✨", title: "Fusion", description: "Merges Proton stable tokens and Neutron volatile tokens into Fungible-Tokens tokens" },
+                    { icon: "⚡", title: "Fission", description: "Splits Base tokens into Proton and Neutron" },
+                    { icon: "✨", title: "Fusion", description: "Merges Proton and Neutron back into Base tokens" },
                     { icon: "β⁺", title: "Transmute β⁺", description: "Convert Proton into Neutron while dynamically adjusting fees based on reserve balance" },
                     { icon: "β⁻", title: "Transmute β⁻", description: "Convert Neutron into Proton with adaptive pricing driven by system health" },
                   ].map((item, index) => (
@@ -147,36 +148,32 @@ export default function HomePage() {
                 </div>
               </motion.div>
               <motion.div
-                className="rounded-[2rem] h-full w-full p-4 flex flex-col items-center justify-center space-y-4"
+                className="rounded-none h-full w-full p-4 flex flex-col items-center justify-center space-y-4"
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                {/* Fission: Fungible-Tokens -> Proton + Neutron */}
+                {/* Fission: Base-Tokens -> Proton + Neutron */} 
                 <TokenFlow
-                  title="Fission"
-                  fromTokens={['Fungible Token']}
+                  fromTokens={['Base Token']}
                   toTokens={['Proton', 'Neutron']}
                 />
 
-                {/* Fusion: Proton + Neutron -> Fungible-Tokens */}
+                {/* Fusion: Proton + Neutron -> Base-Tokens */}
                 <TokenFlow
-                  title="Fusion"
                   fromTokens={['Proton', 'Neutron']}
-                  toTokens={['Fungible Token']}
+                  toTokens={['Base Token']}
                   reverse={false}
                 />
 
                 {/* Transmute β⁺: Proton -> Neutron */}
                 <TokenFlow
-                  title="Transmute β⁺"
                   fromTokens={['Proton']}
                   toTokens={['Neutron']}
                 />
 
                 {/* Transmute β⁻: Neutron -> Proton */}
                 <TokenFlow
-                  title="Transmute β⁻"
                   fromTokens={['Neutron']}
                   toTokens={['Proton']}
                 />
@@ -199,118 +196,72 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="relative min-h-screen flex items-center z-[5]">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-5xl font-bold mb-6 text-balance">Why Choose Our Platform</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty">
-              Revolutionary dual-token mechanics on Bitcoin infrastructure. Build the future of stable assets with cutting-edge technology.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-            {/* Price Stability */}
-            <Card className="p-8 cursor-target border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Dual Token Innovation
+      {/* Research Section */}
+      <section className="relative z-[5] mt-40 mb-32">
+        <div className="container mx-auto px-4 py-16 lg:py-24 relative">
+          <div className="grid gap-10 lg:grid-cols-2 items-start">
+            <motion.div
+              className="space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="inline-block bg-white/10 px-4 py-2 rounded-none text-sm font-medium backdrop-blur-sm border border-white/40">
+                Research Driven
+              </span>
+              <h3 className="text-3xl lg:text-4xl tracking-tight font-semibold text-foreground">
+                Gluon&apos;s architecture is grounded in peer-reviewed cryptography.
+              </h3>
+              <p className="text-lg leading-relaxed text-muted-foreground">
+                The Gluon dual-token system combines the stability guarantees of Neutron with the
+                reflexive upside captured by Proton. Our settlement, oracle, and reserve
+                controls follow the Stability Nexus Gluon research note published on IACR ePrint 2025/1372.
+              </p>
+              <ul className="space-y-3 text-sm lg:text-base text-muted-foreground">
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 text-primary">•</span>
+                  <span>Proof-based solvency flows that map to Solana compute budgets and parallel execution.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 text-primary">•</span>
+                  <span>Adaptive reserve thresholds that inform swap fees and transmutation routes for resilient liquidity.</span>
+                </li>
+              </ul>
+              <div>
+                <Link
+                  href="https://eprint.iacr.org/2025/1372"
+                  target="_blank"
+                  className="text-primary underline-offset-4 hover:underline font-medium"
+                >
+                  Read the Gluon research note →
+                </Link>
+              </div>
+            </motion.div>
+            <motion.div
+              className="w-full lg:w-3/4 lg:ml-auto"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
+              <Card className="p-4 bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors">
+                <Link href="https://eprint.iacr.org/2025/1372" target="_blank" className="block group">
+                  <div className="relative aspect-square overflow-hidden rounded-lg">
+                    <Image
+                      unoptimized
+                      fetchPriority="high"
+                      loading="lazy"
+                      src="/GluonPaper.png"
+                      alt="Gluon Solana Research Paper"
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.1
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Revolutionary fission/fusion mechanics split assets into Proton (stable) and Neutron (volatile) tokens. Get exposure to both stability and leveraged volatility from a single underlying asset.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Full Transparency */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Bitcoin Infrastructure
-                  </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.2
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Built on Bitcoin-compatible networks like Citrea and Rootstock. Leverage Bitcoin's security and stability while accessing modern DeFi capabilities and smart contract functionality.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Easy Integration */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Real-Time Oracle Data
-                  </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.3
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Powered by different Oracles real-time price feeds for accurate and reliable asset pricing. Get sub-second price updates across multiple asset classes including fiat, crypto, and commodities.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Regulatory Compliant */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Full Transparency
-                  </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.4
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  All transactions, reserves, and system health metrics are publicly auditable on the blockchain. Complete transparency builds trust and ensures accountability in every operation.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 24/7 Monitoring */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Dynamic Risk Management
-                  </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.5
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Advanced system health monitoring and automated risk management protocols. Choose from conservative, moderate, or aggressive risk profiles to match your investment strategy.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Global Access */}
-            <Card className="p-8 cursor-target bg-black/50 backdrop-blur-md border border-white/10">
-              <CardContent className="p-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm">
-                    Multi-Chain Support
-                  </div>
-                  <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold border border-white">
-                    1.6
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">
-                  Deploy across Citrea Testnet, Rootstock Testnet, and Scroll Sepolia networks. Seamless cross-chain functionality with unified user experience across Bitcoin-compatible ecosystems.
-                </p>
-              </CardContent>
-            </Card>
+                </Link>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </section>

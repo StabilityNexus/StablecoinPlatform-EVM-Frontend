@@ -36,7 +36,7 @@ export function useReactorInfo(reactorAddress: string) {
   const { data: base } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "base",
+    functionName: "BASE_TOKEN",
     query: {
       enabled: enabledQuery,
     },
@@ -45,7 +45,7 @@ export function useReactorInfo(reactorAddress: string) {
   const { data: neutron } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "neutron",
+    functionName: "NEUTRON_TOKEN",
     query: {
       enabled: enabledQuery,
     },
@@ -54,7 +54,7 @@ export function useReactorInfo(reactorAddress: string) {
   const { data: proton } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "proton",
+    functionName: "PROTON_TOKEN",
     query: {
       enabled: enabledQuery,
     },
@@ -63,7 +63,7 @@ export function useReactorInfo(reactorAddress: string) {
   const { data: treasury } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "treasury",
+    functionName: "TREASURY",
     query: {
       enabled: enabledQuery,
     },
@@ -79,20 +79,20 @@ export function useReactorInfo(reactorAddress: string) {
   })
 
   const { data: neutronSupply } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "neutronSupply",
+    address: neutron as `0x${string}`,
+    abi: ERC20ABI,
+    functionName: "totalSupply",
     query: {
-      enabled: enabledQuery,
+      enabled: !!neutron,
     },
   })
 
   const { data: protonSupply } = useReadContract({
-    address: reactorAddress as `0x${string}`,
-    abi: StableCoinReactorABI,
-    functionName: "protonSupply",
+    address: proton as `0x${string}`,
+    abi: ERC20ABI,
+    functionName: "totalSupply",
     query: {
-      enabled: enabledQuery,
+      enabled: !!proton,
     },
   })
 
@@ -105,10 +105,10 @@ export function useReactorInfo(reactorAddress: string) {
     },
   })
 
-  const { data: isAboveTarget } = useReadContract({
+  const { data: criticalReserveRatio } = useReadContract({
     address: reactorAddress as `0x${string}`,
     abi: StableCoinReactorABI,
-    functionName: "isAboveTargetReserveRatio",
+    functionName: "CRITICAL_RESERVE_RATIO",
     query: {
       enabled: enabledQuery,
     },
@@ -167,7 +167,14 @@ export function useReactorInfo(reactorAddress: string) {
     DAI: 1.01,
   }
 
-  if (base && neutron && proton && reserve && neutronSupply !== undefined && protonSupply !== undefined) {
+  if (
+    base &&
+    neutron &&
+    proton &&
+    reserve !== undefined &&
+    neutronSupply !== undefined &&
+    protonSupply !== undefined
+  ) {
     const reactorData: ReactorData = {
       address: reactorAddress,
       vaultName: vaultName || `Vault ${reactorAddress.slice(-6)}`,
@@ -179,7 +186,10 @@ export function useReactorInfo(reactorAddress: string) {
       neutronSupply: neutronSupply,
       protonSupply: protonSupply,
       reserveRatio: reserveRatio || BigInt(0),
-      isHealthy: isAboveTarget ?? true,
+      isHealthy:
+        reserveRatio !== undefined && criticalReserveRatio !== undefined
+          ? reserveRatio >= criticalReserveRatio
+          : true,
       neutronSymbol,
       protonSymbol,
       neutronName,

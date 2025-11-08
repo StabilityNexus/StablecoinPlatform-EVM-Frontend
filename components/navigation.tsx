@@ -7,6 +7,7 @@ import PillNav from "@/components/PillNav"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -34,9 +35,19 @@ export default function Navigation() {
     <div className="relative w-full">
       {/* StableCoin Logo/Heading on the left */}
       <div className="absolute top-[1em] left-4 z-[1002]">
-        <Link href="/" className="flex items-center space-x-2 group">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="relative h-8 w-14">
+            <Image
+              src="/GluonProtocol-Darker.png"
+              alt="Gluon logo"
+              fill
+              sizes="112px"
+              className="object-contain"
+              priority
+            />
+          </div>
           <span className="font-bold text-xl text-foreground group-hover:text-primary transition-colors">
-            NUCLOIN
+            Gluon
           </span>
         </Link>
       </div>
