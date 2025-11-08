@@ -27,16 +27,24 @@ const Circle = forwardRef<
 
 Circle.displayName = "Circle";
 
+type TokenFlowToken =
+  | "Fungible"
+  | "Neutron"
+  | "Proton"
+  | "Base Token"
+  | "stable token"
+  | "Stable Token"
+  | "leveraged yield token"
+  | "Leveraged Yield Token";
+
 const TokenFlow = ({
-  title,
   fromTokens,
   toTokens,
   reverse = false,
   className = ""
 }: {
-  title: string;
-  fromTokens: Array<'Fungible' | 'Neutron' | 'Proton'>;
-  toTokens: Array<'Fungible' | 'Neutron' | 'Proton'>;
+  fromTokens: TokenFlowToken[];
+  toTokens: TokenFlowToken[];
   reverse?: boolean;
   className?: string;
 }) => {
@@ -63,36 +71,31 @@ const TokenFlow = ({
     return () => clearTimeout(timer);
   }, [fromTokens.length, toTokens.length]);
 
-  const getTokenIcon = (token: 'Fungible' | 'Neutron' | 'Proton') => {
+  const getTokenIcon = (token: TokenFlowToken) => {
     const iconProps = { className: "w-full h-full" };
-    switch (token) {
-      case 'Fungible':
-        return <ErcIcon {...iconProps} />;
-      case 'Neutron':
-        return <StableCoinIcon {...iconProps} />;
-      case 'Proton':
-        return <ReserveCoinIcon {...iconProps} />;
+    const normalized = token.toLowerCase();
+
+    if (normalized === "stable token" || normalized === "neutron") {
+      return <StableCoinIcon {...iconProps} />;
     }
+
+    if (normalized === "leveraged yield token" || normalized === "proton") {
+      return <ReserveCoinIcon {...iconProps} />;
+    }
+
+    return <ErcIcon {...iconProps} />;
   };
 
   return (
     <motion.div
-      className={`w-full h-full flex flex-col items-center justify-center space-y-3 border rounded-xl p-4 relative z-10 bg-black/5 border-white/20 ${className}`}
+      className={`w-full max-w-[32rem] h-full flex flex-col items-center justify-center space-y-3 border rounded-2xl p-4 relative z-10 bg-grey-800 backdrop-blur-md border-white/30 ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 1, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <motion.p
-        className="text-center text-base font-semibold relative z-10 text-white"
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.2 }}
-      >
-        {title}
-      </motion.p>
       <div
         ref={containerRef}
-        className="relative flex w-full h-28 items-center justify-between px-6"
+        className="relative flex w-full h-32 items-center justify-between px-6"
       >
         {/* From Tokens */}
         <div className="flex flex-col items-center space-y-3 relative z-10">
@@ -107,7 +110,9 @@ const TokenFlow = ({
               <Circle ref={(el) => { fromRefs.current[index] = el; }}>
                 {getTokenIcon(token)}
               </Circle>
-              <span className="text-xs font-medium text-gray-300">{token}</span>
+              <span className="text-xs font-medium text-gray-900 dark:text-gray-200">
+                {token}
+              </span>
             </motion.div>
           ))}
         </div>
@@ -125,7 +130,9 @@ const TokenFlow = ({
               <Circle ref={(el) => { toRefs.current[index] = el; }}>
                 {getTokenIcon(token)}
               </Circle>
-              <span className="text-xs font-medium text-gray-300">{token}</span>
+              <span className="text-xs font-medium text-gray-900 dark:text-gray-200">
+                {token}
+              </span>
             </motion.div>
           ))}
         </div>
